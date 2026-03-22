@@ -10,13 +10,7 @@ export default {
     sourcemap: false,
     inlineDynamicImports: true,
   },
-  external: [
-    'lit',
-    'lit/decorators.js',
-    'lit/directive.js',
-    'lit/directives/style-map.js',
-    'lit/directives/class-map.js'
-  ],
+  external: [],
   plugins: [
     resolve({
       browser: true,
