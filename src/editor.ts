@@ -1,7 +1,6 @@
-import { html, LitElement, TemplateResult, css } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { LitElement, html, css, TemplateResult } from 'lit';
+import { property, state } from 'lit/decorators.js';
 
-@customElement('wattpilot-card-editor')
 export class WattpilotCardEditor extends LitElement {
   @property({ attribute: false }) public hass?: any;
   @state() private _config?: any;
@@ -10,114 +9,162 @@ export class WattpilotCardEditor extends LitElement {
     this._config = config;
   }
 
-  private _configChanged(ev: any): void {
+  private _getValue(key: string) {
+    return this._config ? this._config[key] : '';
+  }
+
+  private _valueChanged(ev: any): void {
     if (!this._config || !this.hass) return;
     const target = ev.target;
-    const value = target.value;
-    const configValue = target.configValue;
+    const configKey = target.configValue;
+    const newValue = target.value;
 
-    if (this._config[configValue] === value) return;
+    if (this._getValue(configKey) === newValue) return;
 
-    const config = { ...this._config };
-    if (value === '') {
-      delete config[configValue];
+    const newConfig = { ...this._config };
+    if (newValue === "") {
+      delete newConfig[configKey];
     } else {
-      config[configValue] = value;
+      newConfig[configKey] = newValue;
     }
 
     const event = new CustomEvent('config-changed', {
-      detail: { config },
+      detail: { config: newConfig },
       bubbles: true,
       composed: true,
     });
     this.dispatchEvent(event);
   }
 
-  protected render(): TemplateResult {
+  render(): TemplateResult {
     if (!this.hass || !this._config) return html``;
 
-    // Pobranie i posortowanie wszystkich dostępnych encji z Home Assistant
-    const entities = Object.keys(this.hass.states).sort();
+    const groups = [
+      {
+        label: "Status & Core Entities",
+        fields: [
+          { key: "entity_status", label: "Car State" },
+          { key: "entity_reason", label: "Charging Reason" },
+          { key: "entity_charging", label: "Charging (Connected)" },
+          { key: "entity_power", label: "Charging Power (W/kW)" },
+          { key: "entity_energy", label: "Grid/Home Balance" },
+          { key: "entity_session_energy", label: "Session Energy" },
+          { key: "entity_total_charged", label: "Total Charged (kWh)" },
+        ]
+      },
+      {
+        label: "Main Controls",
+        fields: [
+          { key: "entity_current", label: "Charging Current (Number)" },
+          { key: "entity_mode", label: "Charging Mode (Select)" },
+          { key: "entity_phase", label: "Phase Switch (Select)" },
+          { key: "entity_charge_pause", label: "Charge Pause (Switch)" },
+          { key: "entity_start", label: "Start Button" },
+          { key: "entity_stop", label: "Stop Button" },
+          { key: "entity_force", label: "Force Start Button" },
+          { key: "entity_restart", label: "Restart Button" },
+        ]
+      },
+      {
+        label: "Vehicle & Battery",
+        fields: [
+          { key: "entity_soc", label: "Current SoC" },
+          { key: "entity_soc_max", label: "Maximum SoC" },
+          { key: "entity_target_soc", label: "Target SoC (Input)" },
+          { key: "entity_min_soc", label: "Minimum SoC (Input)" },
+          { key: "entity_range", label: "Range (km)" },
+          { key: "entity_range_max", label: "Max Range (km)" },
+          { key: "entity_charge_end", label: "Charging Time Left" },
+        ]
+      },
+      {
+        label: "Smart Features (Next Trip / Eco / PV)",
+        fields: [
+          { key: "entity_next_trip_pwr", label: "Next Trip Energy" },
+          { key: "entity_next_trip_timing", label: "Next Trip Time" },
+          { key: "entity_pv_surplus", label: "PV Surplus Switch" },
+          { key: "entity_pv_threshold", label: "PV Battery Threshold" },
+          { key: "entity_max_price", label: "Max Price (Smart Price)" },
+          { key: "entity_awattar", label: "Awattar/Lumina Switch" },
+          { key: "entity_eco_persist", label: "Remain in Eco Mode" },
+          { key: "entity_start_at", label: "Start Charging At" },
+        ]
+      },
+      {
+        label: "Boost & Phase Settings",
+        fields: [
+          { key: "entity_boost", label: "Boost Switch" },
+          { key: "entity_boost_type", label: "Boost Type (Select)" },
+          { key: "entity_boost_limit", label: "Boost Limit (Number)" },
+          { key: "entity_phase_power", label: "3-Phase Power Level" },
+          { key: "entity_phase_delay", label: "Phase Switch Delay" },
+          { key: "entity_phase_interval", label: "Phase Switch Interval" },
+        ]
+      },
+      {
+        label: "Technical Settings",
+        fields: [
+          { key: "entity_lock", label: "Lock Level (Select)" },
+          { key: "entity_cable_unlock", label: "Cable Unlock (Select)" },
+          { key: "entity_sim_unplug", label: "Simulate Unplugging" },
+          { key: "entity_power_outage", label: "Unlock on Power Outage" },
+          { key: "entity_ground_check", label: "Ground Check" },
+          { key: "entity_led_save", label: "LED Energy Saving" },
+          { key: "entity_min_time", label: "Min Charging Time" },
+        ]
+      },
+      {
+        label: "System & Network",
+        fields: [
+          { key: "entity_internal_error", label: "Internal Error Sensor" },
+          { key: "entity_firmware_update", label: "Firmware Update" },
+          { key: "entity_wifi_state", label: "WiFi State" },
+          { key: "entity_wifi_conn", label: "WiFi Connection" },
+          { key: "entity_wifi_signal", label: "WiFi Signal" },
+          { key: "entity_hotspot_sw", label: "Disable Hotspot Switch" },
+        ]
+      }
+    ];
 
     return html`
       <div class="card-config">
-        <ha-textfield
-          label="Nazwa karty (opcjonalna)"
-          .value="${this._config.name || ''}"
-          .configValue="${'name'}"
-          @input="${this._configChanged}"
-        ></ha-textfield>
+        ${groups.map(group => html`
+          <div class="group">
+            <div class="group-label">${group.label}</div>
+            <div class="grid">
+              ${group.fields.map(f => html`
+                <ha-entity-picker
+                  .label="${f.label}"
+                  .hass=${this.hass}
+                  .value=${this._getValue(f.key)}
+                  .configValue=${f.key}
+                  @change=${this._valueChanged}
+                  allow-custom-entity
+                ></ha-entity-picker>
+              `)}
+            </div>
+          </div>
+        `)}
 
-        <div class="section-title">Główne encje zasilania i statusu</div>
-        ${this._renderEntitySelect('Status urządzenia', 'entity_status', entities)}
-        ${this._renderEntitySelect('Status ładowania (Charging)', 'entity_charging', entities)}
-        ${this._renderEntitySelect('Aktualna Moc (Power)', 'entity_power', entities)}
-        ${this._renderEntitySelect('Główny Prąd (Current)', 'entity_current', entities)}
-        ${this._renderEntitySelect('Energia Sesji (Session Energy)', 'entity_session_energy', entities)}
-        ${this._renderEntitySelect('Całkowita Energia (Energy)', 'entity_energy', entities)}
-        ${this._renderEntitySelect('Powód Statusu (Reason)', 'entity_reason', entities)}
-
-        <div class="section-title">Bateria i Zasięg</div>
-        ${this._renderEntitySelect('Stan Baterii % (SOC)', 'entity_soc', entities)}
-        ${this._renderEntitySelect('Max Pojemność % (SOC Max)', 'entity_soc_max', entities)}
-        ${this._renderEntitySelect('Docelowy % (Target SOC)', 'entity_target_soc', entities)}
-        ${this._renderEntitySelect('Czas do końca (Charge End)', 'entity_charge_end', entities)}
-        ${this._renderEntitySelect('Zasięg (Range)', 'entity_range', entities)}
-        ${this._renderEntitySelect('Max Zasięg (Range Max)', 'entity_range_max', entities)}
-
-        <div class="section-title">Sterowanie i Tryby</div>
-        ${this._renderEntitySelect('Tryb Pracy (Mode)', 'entity_mode', entities)}
-        ${this._renderEntitySelect('Tryb Faz (Phase)', 'entity_phase', entities)}
-        ${this._renderEntitySelect('Przycisk: Start', 'entity_start', entities)}
-        ${this._renderEntitySelect('Przycisk: Stop', 'entity_stop', entities)}
-        ${this._renderEntitySelect('Przycisk: Force', 'entity_force', entities)}
-        ${this._renderEntitySelect('Przycisk: Restart', 'entity_restart', entities)}
-
-        <div class="section-title">Informacje i Diagnostyka</div>
-        ${this._renderEntitySelect('Całkowicie naładowano (Total Charged)', 'entity_total_charged', entities)}
-        ${this._renderEntitySelect('Aktualizacja Firmware', 'entity_firmware_update', entities)}
-        ${this._renderEntitySelect('WiFi: Status', 'entity_wifi_state', entities)}
-        ${this._renderEntitySelect('WiFi: Połączenie', 'entity_wifi_conn', entities)}
-        ${this._renderEntitySelect('WiFi: Sygnał', 'entity_wifi_signal', entities)}
+        <div class="group">
+          <div class="group-label">Side Columns (Left/Right)</div>
+          <p style="font-size: 12px; color: var(--secondary-text-color); margin: 0;">
+            Configuration for left1-left5 and right1-right5 (icons, color rules, attributes) 
+            should be managed via the YAML Code Editor.
+          </p>
+        </div>
       </div>
     `;
   }
 
-  /**
-   * Funkcja pomocnicza do generowania listy rozwijanej (ha-select)
-   */
-  private _renderEntitySelect(label: string, configValue: string, entities: string[]): TemplateResult {
-    return html`
-      <ha-select
-        label="${label}"
-        .value="${this._config[configValue] || ''}"
-        .configValue="${configValue}"
-        @selected="${this._configChanged}"
-        @closed="${(ev: any) => ev.stopPropagation()}"
-        clearable
-      >
-        ${entities.map((entity) => html`<mwc-list-item .value="${entity}">${entity}</mwc-list-item>`)}
-      </ha-select>
-    `;
-  }
-
   static styles = css`
-    .card-config {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding-bottom: 16px;
-    }
-    .section-title {
-      margin-top: 16px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--secondary-text-color);
-      border-bottom: 1px solid var(--divider-color);
-      padding-bottom: 4px;
-    }
-    ha-select, ha-textfield {
-      width: 100%;
-    }
+    .card-config { display: flex; flex-direction: column; gap: 12px; }
+    .group { border: 1px solid var(--divider-color); border-radius: 8px; padding: 10px; background: var(--card-background-color); }
+    .group-label { font-weight: bold; margin-bottom: 8px; color: var(--primary-color); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    ha-entity-picker { width: 100%; }
+    @media (max-width: 450px) { .grid { grid-template-columns: 1fr; } }
   `;
 }
+
+customElements.define('wattpilot-card-editor', WattpilotCardEditor);
