@@ -10,15 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # Aktualizacja do v4
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4 # Aktualizacja do v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 24 # Twoja wymagana wersja Node.js
+          node-version: 24  
+          always-auth: false
 
       - name: Install dependencies
-        run: npm install # 'npm ci' jest szybszy i pewniejszy w środowiskach CI niż 'npm install'
+        run: npm install --no-package-lock
 
       - name: Build project
         run: npm run build
