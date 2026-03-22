@@ -9,17 +9,15 @@ export class WattpilotCardEditor extends LitElement {
     this._config = config;
   }
 
-  private _getValue(key: string) {
-    return this._config ? this._config[key] : '';
-  }
-
   private _valueChanged(ev: any): void {
     if (!this._config || !this.hass) return;
     const target = ev.target;
     const configKey = target.configValue;
+    
+    // Pobieramy wartość z detali zdarzenia (standard HA) lub bezpośrednio z targetu
     const newValue = ev.detail?.value !== undefined ? ev.detail.value : target.value;
 
-    if (this._getValue(configKey) === newValue) return;
+    if (this._config[configKey] === newValue) return;
 
     const newConfig = { ...this._config };
     if (newValue === "" || newValue === undefined) {
@@ -78,7 +76,7 @@ export class WattpilotCardEditor extends LitElement {
         ]
       },
       {
-        label: "Smart Features (Next Trip / Eco / PV)",
+        label: "Smart Features",
         fields: [
           { key: "entity_next_trip_pwr", label: "Next Trip Energy" },
           { key: "entity_next_trip_timing", label: "Next Trip Time" },
@@ -135,7 +133,7 @@ export class WattpilotCardEditor extends LitElement {
                 <ha-entity-picker
                   .label="${f.label}"
                   .hass=${this.hass}
-                  .value=${this._getValue(f.key)}
+                  .value=${this._config[f.key] || ''}
                   .configValue=${f.key}
                   @value-changed=${this._valueChanged}
                   allow-custom-entity
@@ -147,7 +145,7 @@ export class WattpilotCardEditor extends LitElement {
 
         <ha-expansion-panel header="Side Columns (Left/Right)" outlined>
           <div class="content">
-            <p style="font-size: 12px; color: var(--secondary-text-color); margin: 0;">
+            <p class="note">
               Configuration for left1-left5 and right1-right5 (icons, color rules, attributes) 
               should be managed via the YAML Code Editor.
             </p>
@@ -172,12 +170,20 @@ export class WattpilotCardEditor extends LitElement {
     .content {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      padding: 12px;
+      gap: 16px;
+      padding: 16px;
       background: var(--primary-background-color);
+      /* Kluczowa zmiana: min-height wymusza na przeglądarce renderowanie zawartości */
+      min-height: 50px;
     }
     ha-entity-picker {
+      display: block;
       width: 100%;
+    }
+    .note {
+      font-size: 12px;
+      color: var(--secondary-text-color);
+      margin: 0;
     }
   `;
 }
