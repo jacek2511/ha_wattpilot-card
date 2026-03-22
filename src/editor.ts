@@ -1,12 +1,14 @@
 import { LitElement, html, css, TemplateResult } from 'lit';
-import { property, state } from 'lit/decorators.js';
 
-export class WattpilotCardEditor extends LitElement {
-  @property({ attribute: false }) public hass?: any;
-  @state() private _config?: any;
+const Lit = (window as any).LitElement || Object.getPrototypeOf(customElements.get("ha-panel-lovelace")).LitElement;
+const { html: litHtml, css: litCss } = (window as any).litGui || (window as any).LitElement;
 
-  public setConfig(config: any): void {
-    this._config = JSON.parse(JSON.stringify(config));
+export class WattpilotCardEditor extends Lit {
+  static get properties() {
+    return {
+      hass: { attribute: false },
+      _config: { state: true }
+    };
   }
 
   private _valueChanged(ev: any): void {
