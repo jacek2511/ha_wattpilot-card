@@ -20,8 +20,8 @@ private _hass: any;
   public static getStubConfig() {
     return {
       name: 'Wattpilot',
-      entity_l1_power: '',
-      entity_max_price: '',
+      entity_status: "sensor.wattpilot_carstate",
+      entity_mode: "select.wattpilot_charging_mode",
     };
   }
 
