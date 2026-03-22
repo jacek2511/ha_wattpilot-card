@@ -131,24 +131,25 @@ export class WattpilotCardEditor extends LitElement {
         ${groups.map(group => html`
           <div class="group">
             <div class="group-label">${group.label}</div>
-            <div class="grid">
-              ${group.fields.map(f => html`
-                <ha-selector
-                  .hass=${this.hass}
-                  .selector=${{ entity: {} }}
-                  .value=${this._getValue(f.key)}
-                  .label=${f.label}
-                  .required=${false}
-                  @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, f.key)}
-                ></ha-selector>
+            <div class="fields-container"> ${group.fields.map(f => html`
+                <div class="field">
+                  <ha-selector
+                    .hass=${this.hass}
+                    .selector=${{ entity: {} }}
+                    .value=${this._getValue(f.key)}
+                    .label=${f.label}
+                    .required=${false}
+                    @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, f.key)}
+                  ></ha-selector>
+                </div>
               `)}
             </div>
           </div>
         `)}
-
+        
         <div class="group">
           <div class="group-label">Side Columns (Left/Right)</div>
-          <p style="font-size: 12px; color: var(--secondary-text-color); margin: 0;">
+          <p class="note">
             Configuration for left1-left5 and right1-right5 (icons, color rules, attributes) 
             should be managed via the YAML Code Editor.
           </p>
@@ -158,12 +159,64 @@ export class WattpilotCardEditor extends LitElement {
   }
 
   static styles = css`
-    .card-config { display: flex; flex-direction: column; gap: 12px; }
-    .group { border: 1px solid var(--divider-color); border-radius: 8px; padding: 10px; background: var(--card-background-color); }
-    .group-label { font-weight: bold; margin-bottom: 8px; color: var(--primary-color); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    ha-selector { display: block; width: 100%; }
-    @media (max-width: 450px) { .grid { grid-template-columns: 1fr; } }
+    :host {
+      /* To zapewnia, że edytor nie rozpycha się w nieskończoność */
+      display: block;
+    }
+
+    .card-config {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 8px 4px; /* Mały padding, żeby nie dotykało krawędzi */
+    }
+
+    .group {
+      border: 1px solid var(--divider-color);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--secondary-background-color);
+    }
+
+    .group-label {
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: var(--primary-color);
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.8px;
+    }
+
+    .fields-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px; /* Odstępy między selektorami */
+    }
+
+    .field {
+      width: 100%;
+    }
+
+    ha-selector {
+      width: 100%;
+      display: block;
+    }
+
+    .note {
+      font-size: 12px;
+      color: var(--secondary-text-color);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    /* Jeśli koniecznie chcesz dwie kolumny na bardzo szerokich ekranach (powyżej 800px) */
+    @media (min-width: 800px) {
+      /* .fields-container { 
+           display: grid; 
+           grid-template-columns: 1fr 1fr; 
+           gap: 12px; 
+         } */
+    }
   `;
 }
 
