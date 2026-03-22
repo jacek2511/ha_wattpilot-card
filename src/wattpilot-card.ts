@@ -832,8 +832,239 @@ private _hass: any;
     this.bindUIElement('#awattar-sw', 'switch', '');
   }
 
-  // Pamiętaj o dodaniu metody disconnectedCallback, 
-  // aby zatrzymać animację, gdy karta znika z ekranu (dobra praktyka):
+  private updateData(): void {
+    if (!this._hass || !this.config || !this.shadowRoot) return;
+    const states = this._hass.states;
+
+    // 1. Podstawowy status urządzenia
+    const status = states[this.config.entity_status]?.state || 'Unknown';
+    const isCharging = states[this.config.entity_charging]?.state === 'on' || 
+                       status.toLowerCase().includes('charging');
+
+    // 2. Inicjalizacja kolumn bocznych (jeśli puste) i ich aktualizacja
+    const leftCol = this.shadowRoot.querySelector('#left-col');
+    if (leftCol && leftCol.innerHTML === '') {
+      this.renderSideColumn('left');
+      this.renderSideColumn('right');
+    }
+    this.updateSideColumn('left');
+    this.updateSideColumn('right');
+
+    // 3. Moc i Fazy
+    const pEnt = states[this.config.entity_power];
+    let totalA_text = "0.0";
+    let phaseText = "Auto";
+
+    if (pEnt) {
+      const attr = pEnt.attributes;
+      const powerEl = this.shadowRoot.querySelector('#power') as HTMLElement;
+      if (powerEl) powerEl.innerText = `${parseFloat(pEnt.state).toFixed(1)} kW`;
+
+      const a1 = parseFloat(attr.L1_Ampere || 0);
+      const a2 = parseFloat(attr.L2_Ampere || 0);
+      const a3 = parseFloat(attr.L3_Ampere || 0);
+      totalA_text = (a1 + a2 + a3).toFixed(1);
+
+      const activePhases = [a1, a2, a3].filter(amp => amp > 0.3).length;
+      if (activePhases >= 3) phaseText = "3-Phases";
+      else if (activePhases > 0) phaseText = "1-Phase";
+
+      const sessionEnergyEl = this.shadowRoot.querySelector('#session-energy') as HTMLElement;
+      if (sessionEnergyEl && states[this.config.entity_session_energy]) {
+        sessionEnergyEl.innerText = `${parseFloat(states[this.config.entity_session_energy].state).toFixed(1)} kWh`;
+      }
+
+      const ampVal = this.shadowRoot.querySelector('#amp-val') as HTMLElement;
+      const phaseInfo = this.shadowRoot.querySelector('#phase-info') as HTMLElement;
+      if (ampVal) ampVal.innerText = `${totalA_text} A`;
+      if (phaseInfo) phaseInfo.innerText = phaseText;
+    }
+
+    // 4. Logika Baterii (SOC) i wizualizacja paska
+    const socRaw = states[this.config.entity_soc]?.state || 0;
+    const socMaxRaw = states[this.config.entity_soc_max]?.state || 
+                     (states[this.config.entity_target_soc]?.state || 100);
+    const soc = Math.round(parseFloat(socRaw as string));
+    const socMax = Math.round(parseFloat(socMaxRaw as string));
+
+    const socTextEl = this.shadowRoot.querySelector('#soc-text') as HTMLElement;
+    if (socTextEl) socTextEl.innerText = `${soc}/${socMax} %`;
+
+    const socBar = this.shadowRoot.querySelector('#soc-bar') as HTMLElement;
+    const socIcon = this.shadowRoot.querySelector('#soc-icon') as any;
+
+    if (socBar && socIcon) {
+      const s = Math.max(0, Math.min(100, soc));
+      socBar.style.width = `${s}%`;
+
+      // Dynamika ikon baterii
+      let batLevel = Math.round(s / 10) * 10;
+      let iconStr = isCharging ? 'mdi:battery-charging' : 'mdi:battery';
+      if (s >= 100) iconStr = isCharging ? 'mdi:battery-charging-100' : 'mdi:battery';
+      else if (s <= 5) iconStr = isCharging ? 'mdi:battery-charging-outline' : 'mdi:battery-outline';
+      else iconStr += `-${batLevel}`;
+      socIcon.setAttribute('icon', iconStr);
+
+      // Obliczanie koloru gradientu (od czerwonego do zielonego/żółtego)
+      let r, g, b;
+      if (s < 50) {
+        const p = s / 50;
+        r = Math.round(239 + (245 - 239) * p);
+        g = Math.round(68 + (158 - 68) * p);
+        b = Math.round(68 + (11 - 68) * p);
+      } else {
+        const p = (s - 50) / 50;
+        r = Math.round(245 + (34 - 245) * p);
+        g = Math.round(158 + (197 - 158) * p);
+        b = Math.round(11 + (94 - 11) * p);
+      }
+
+      const dynamicColor = `rgb(${r}, ${g}, ${b})`;
+      const staticGradient = `linear-gradient(90deg, #ef4444 0%, ${dynamicColor} 100%)`;
+      const stripes = `linear-gradient(-45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent)`;
+
+      if (isCharging) {
+        socBar.classList.add('charging-anim');
+        socBar.style.background = `${stripes}, ${staticGradient}`;
+        socBar.style.backgroundSize = `30px 30px, 100% 100%`;
+      } else {
+        socBar.classList.remove('charging-anim');
+        socBar.style.background = staticGradient;
+      }
+      socIcon.style.color = dynamicColor;
+    }
+
+    // 5. Czas do końca ładowania
+    const chargeEndState = states[this.config.entity_charge_end];
+    const chargeEndEl = this.shadowRoot.querySelector('#charge-end-text') as HTMLElement;
+    if (chargeEndEl) {
+      if (isCharging && chargeEndState && !['unknown', 'unavailable'].includes(chargeEndState.state)) {
+        try {
+          const endDate = new Date(chargeEndState.state);
+          const diffMs = endDate.getTime() - new Date().getTime();
+          if (diffMs > 0) {
+            const h = Math.floor(diffMs / 3600000);
+            const m = Math.floor((diffMs % 3600000) / 60000);
+            chargeEndEl.innerText = `${h > 0 ? h + 'h ' : ''}${m}m left`;
+          } else chargeEndEl.innerText = '';
+        } catch { chargeEndEl.innerText = ''; }
+      } else chargeEndEl.innerText = '';
+    }
+
+    // 6. Główny suwak prądu (synchronizacja z HA)
+    const currEnt = states[this.config.entity_current];
+    if (currEnt && !this._isInteractingC) {
+      const curr = parseInt(currEnt.state, 10) || 6;
+      this._currentAmps = curr;
+      const slider = this.shadowRoot.querySelector('#slider-current') as HTMLInputElement;
+      if (slider) slider.value = curr.toString();
+      this.updateWhiteSlider(curr);
+    }
+
+    // 7. Zasięg (Range)
+    const rangeEnt = states[this.config.entity_range];
+    if (rangeEnt) {
+      const range = Math.round(parseFloat(rangeEnt.state));
+      const rangeMax = this.config.entity_range_max ? 
+                       states[this.config.entity_range_max]?.state : 
+                       (rangeEnt.attributes.maxrange || 0);
+      const rangeTextEl = this.shadowRoot.querySelector('#range-text') as HTMLElement;
+      if (rangeTextEl) rangeTextEl.innerText = `${range}/${Math.round(parseFloat(rangeMax as string))} km`;
+    }
+
+    // 8. Status Badges i przyciski Start/Stop
+    const reasonEnt = states[this.config.entity_reason];
+    const reasonText = reasonEnt ? reasonEnt.state : "Fronius Wattpilot";
+    const reasonBadge = this.shadowRoot.querySelector('#reason-badge') as HTMLElement;
+    if (reasonBadge) reasonBadge.innerText = reasonText;
+
+    const statusBadge = this.shadowRoot.querySelector('#status-badge') as HTMLElement;
+    if (statusBadge) {
+      statusBadge.innerText = status;
+      const energyEnt = states[this.config.entity_energy];
+      if (isCharging && energyEnt) {
+        const color = parseFloat(energyEnt.state) >= 0 ? '#22c55e' : '#ef4444';
+        statusBadge.style.borderColor = color;
+        statusBadge.style.color = color;
+      } else if (status.toLowerCase().includes('complete') && soc === 100) {
+        statusBadge.style.borderColor = '#22c55e';
+        statusBadge.style.color = '#22c55e';
+      } else {
+        statusBadge.style.borderColor = 'var(--primary-color)';
+        statusBadge.style.color = 'var(--primary-color)';
+      }
+    }
+
+    // Ukrywanie przycisków w zależności od ładowania
+    this.shadowRoot.querySelector('#btn-start')?.classList.toggle('hidden', isCharging);
+    this.shadowRoot.querySelector('#btn-stop')?.classList.toggle('hidden', !isCharging);
+
+    // Aktywne tryby i fazy
+    const mode = states[this.config.entity_mode]?.state;
+    this.shadowRoot.querySelectorAll('.mode-btn').forEach(b => 
+      (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.val === mode)
+    );
+
+    const pMode = states[this.config.entity_phase]?.state;
+    this.shadowRoot.querySelectorAll('#phase-ctrl .phase-btn').forEach(b => 
+      (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.val === pMode)
+    );
+
+    // 9. Aktualizacja pierścienia LED
+    this.updateLedRing(status, this._currentAmps, mode, phaseText, reasonText);
+    this.renderLeds();
+
+    // 10. Aktualizacja wszystkich paneli ustawień (użycie helpera UI)
+    const uiElements = [
+      '#target-soc', '#min-soc', '#boost-limit', '#next-trip-pwr', '#next-trip-time', 
+      '#min-time', '#phase-delay', '#phase-interval', '#pv-threshold', 
+      '#phase-power-lvl', '#start-at', '#max-price-input', '#lock-sel', '#cable-sel', 
+      '#boost-type-sel', '#hotspot-sw', '#pause-sw', '#boost-sw', '#pv-surplus-sw', 
+      '#eco-persist-sw', '#sim-unplug-sw', '#power-outage-sw', '#ground-check-sw', 
+      '#led-save-sw', '#awattar-sw', '#internal-error-txt', '#firmware-update-txt'
+    ];
+    uiElements.forEach(sel => this.updateUIElement(sel, states));
+
+    // 11. Panel WiFi i Diagnostyka
+    const updateTxt = (id: string, val: string) => {
+      const el = this.shadowRoot?.querySelector(id) as HTMLElement;
+      if (el) el.innerText = val;
+    };
+
+    updateTxt('#wifi-state-txt', states[this.config.entity_wifi_state]?.state || '--');
+    updateTxt('#wifi-conn-txt', states[this.config.entity_wifi_conn]?.state || '--');
+    updateTxt('#wifi-signal-txt', (states[this.config.entity_wifi_signal]?.state || '--') + ' dBm');
+
+    const totalCharged = states[this.config.entity_total_charged]?.state || '0';
+    updateTxt('#total-charged-txt', `${Math.round(parseFloat(totalCharged))} kWh`);
+
+    // Diagnostyka Faz (L1, L2, L3, N)
+    if (pEnt && pEnt.attributes) {
+      const attr = pEnt.attributes;
+      const formatPhase = (prefix: string) => {
+        const p = Math.round(parseFloat(attr[`${prefix}_Power`] || 0));
+        const v = parseFloat(attr[`${prefix}_Voltage`] || 0).toFixed(1);
+        const a = parseFloat(attr[`${prefix}_Ampere`] || 0).toFixed(1);
+        const r = parseFloat(attr[`${prefix}_PowerRelative`] || 0).toFixed(1);
+        return `<span class="phase-label">${prefix}:</span> ${p}W, ${v}V, ${a}A, ${r}%`;
+      };
+      
+      const l1 = this.shadowRoot.querySelector('#l1-line');
+      if (l1) l1.innerHTML = formatPhase('L1');
+      const l2 = this.shadowRoot.querySelector('#l2-line');
+      if (l2) l2.innerHTML = formatPhase('L2');
+      const l3 = this.shadowRoot.querySelector('#l3-line');
+      if (l3) l3.innerHTML = formatPhase('L3');
+      
+      const nLine = this.shadowRoot.querySelector('#n-line');
+      if (nLine) {
+        const p = Math.round(parseFloat(attr.N_Power || 0));
+        const v = parseFloat(attr.N_Voltage || 0).toFixed(1);
+        nLine.innerHTML = `<span class="phase-label">N:</span> ${p}W, ${v}V`;
+      }
+    }
+  }
+
   disconnectedCallback() {
     if (this.animTimer) {
       cancelAnimationFrame(this.animTimer);
