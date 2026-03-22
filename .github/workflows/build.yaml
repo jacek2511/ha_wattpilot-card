@@ -3,11 +3,13 @@ name: Build Wattpilot Card
 on:
   push:
     branches:
-      - main  # upewnij się, że Twoja gałąź to 'main', jeśli używasz 'master' - zmień to tutaj
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Rozwiązuje problem deprecji Node 20
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -15,8 +17,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 24 # Ustawiamy najnowszą wersję
+          # Usunęliśmy linię cache: 'npm', bo nie masz pliku package-lock.json
 
       - name: Install dependencies
         run: npm install
@@ -25,8 +27,8 @@ jobs:
         run: npm run build
 
       - name: Upload compiled JS
-        uses: actions/upload-artifact@v4 # ZMIANA: tutaj była wersja v3, teraz jest v4
+        uses: actions/upload-artifact@v4
         with:
           name: wattpilot-card-js
           path: dist/wattpilot-card.js
-          overwrite: true # Opcjonalne: nadpisuje poprzedni artefakt
+          overwrite: true
