@@ -90,9 +90,11 @@ class WattpilotCard extends HTMLElement {
   }
 
   public setConfig(config: WattpilotConfig) {
+    if (!config) {
+      throw new Error("Invalid configuration");
+    }
+
     this._config = {
-      name: 'Wattpilot',
-      ...WattpilotCard.getStubConfig(),
       ...config
     };
   }
