@@ -1,5 +1,5 @@
 {
   "name": "Fronius Wattpilot Card",
-  "render_readme": true,
-  "filename": "wattpilot-card.js"
+  "filename": "wattpilot-card.js",
+  "render_readme": true
 }
