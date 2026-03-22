@@ -16,7 +16,7 @@ interface WattpilotConfig {
 
 class WattpilotCard extends HTMLElement {
   private _hass!: HomeAssistant;
-  private _config!: WattpilotConfig;
+  public config!: WattpilotConfig;
   private contentLoaded: boolean = false;
   
   private animIdx: number = 0;
@@ -90,14 +90,8 @@ class WattpilotCard extends HTMLElement {
   }
 
   public setConfig(config: WattpilotConfig) {
-    console.log("Edytor otrzymał config:", config);
-    if (!config) {
-      throw new Error("Invalid configuration");
-    }
-
-    this._config = {
-      ...config
-    };
+    if (!config) throw new Error('Invalid configuration');
+    this.config = config;
   }
   
   set hass(hass: HomeAssistant) {
@@ -113,11 +107,7 @@ class WattpilotCard extends HTMLElement {
       this.bindEvents();
       this.startAnimationLoop();
     }
-    try {
-      this.updateData();
-    } catch (e) {
-      console.warn("Wattpilot Card: Waiting for config...", e);
-    }
+    this.updateData();
   }
 
   private render() {
