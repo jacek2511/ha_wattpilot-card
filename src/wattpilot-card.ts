@@ -112,7 +112,11 @@ class WattpilotCard extends HTMLElement {
       this.bindEvents();
       this.startAnimationLoop();
     }
-    this.updateData();
+    try {
+      this.updateData();
+    } catch (e) {
+      console.warn("Wattpilot Card: Waiting for config...", e);
+    }
   }
 
   private render() {
@@ -508,17 +512,23 @@ class WattpilotCard extends HTMLElement {
     if (textLabel) textLabel.innerText = `${val} A`;
   }
   
-  private startAnimationLoop() {
+private startAnimationLoop() {
     if (this._mainLoop) return;
     this._mainLoop = setInterval(() => {
-      const status = (this._hass.states[this.config.entity_status]?.state || '').toLowerCase();
+      if (!this._hass || !this._config || !this._config.entity_status) return;
+
+      const stateObj = this._hass.states[this._config.entity_status];
+      if (!stateObj) return;
+
+      const status = (stateObj.state || '').toLowerCase();
+      
       if (status.includes('charging')) {
         this.animIdx = (this.animIdx + 1) % 32;
         this.renderLeds();
       }
     }, 100);
   }
-
+  
   private renderSideColumn(side: 'left' | 'right'): void {
     if (!this.shadowRoot) return;
     const col = this.shadowRoot.querySelector(`#${side}-col`);
