@@ -44,15 +44,61 @@ class WattpilotCard extends HTMLElement {
       name: 'Wattpilot',
       entity_status: "sensor.wattpilot_carstate",
       entity_mode: "select.wattpilot_charging_mode",
-      entity_current: "number.wattpilot_charging_power"
+      entity_current: "number.wattpilot_charging_power",
+      entity_reason: "sensor.wattpilot_chargingreason",
+      entity_charging: "sensor.wattpilot_carconnected",
+      entity_energy: "sensor.home_real_bilans_energy_hourly",
+      entity_session_energy: "sensor.wattpilot_connection_charged",
+      entity_phase: "select.wattpilot_phase_switch",
+      entity_power: "sensor.wattpilot_charging_energy",
+      entity_start: "button.wattpilot_start_charging",
+      entity_stop: "button.wattpilot_stop_charging",
+      entity_force: "button.wattpilot_start_charging_force",
+      entity_wifi_state: "sensor.wattpilot_wifistate",
+      entity_wifi_conn: "sensor.wattpilot_wifi_connection",
+      entity_wifi_signal: "sensor.wattpilot_wifi_signal",
+      entity_hotspot_sw: "switch.wattpilot_auto_disable_hotspot",
+      entity_total_charged: "sensor.wattpilot_totally_charged",
+      entity_firmware_update: "update.wattpilot_firmware_update",
+      entity_internal_error: "sensor.wattpilot_internalerror",
+      entity_target_soc: "input_number.wattpilot_target_soc",
+      entity_min_soc: "input_number.wattpilot_min_soc",
+      entity_charge_pause: "switch.wattpilot_charge_pause",
+      entity_boost: "switch.wattpilot_boost",
+      entity_boost_type: "select.wattpilot_boost_type",
+      entity_boost_limit: "number.wattpilot_boost_discharges_until",
+      entity_next_trip_pwr: "number.wattpilot_next_trip_charging",
+      entity_next_trip_timing: "input_datetime.wattpilot_next_trip_timing",
+      entity_pv_surplus: "switch.wattpilot_pv_surplus",
+      entity_lock: "select.wattpilot_lock_level_selection",
+      entity_cable_unlock: "select.wattpilot_cable_unlock",
+      entity_max_price: "number.wattpilot_max_price",
+      entity_min_time: "number.wattpilot_min_charging_time",
+      entity_phase_delay: "number.wattpilot_phase_switch_delay",
+      entity_phase_interval: "number.wattpilot_phase_switch_interval",
+      entity_pv_threshold: "number.wattpilot_pv_battery_threshold",
+      entity_eco_persist: "switch.wattpilot_remain_in_eco_mode",
+      entity_sim_unplug: "switch.wattpilot_simulate_unplugging",
+      entity_start_at: "number.wattpilot_start_charging_at",
+      entity_power_outage: "switch.wattpilot_unlock_power_outage",
+      entity_ground_check: "switch.wattpilot_ground_check",
+      entity_led_save: "switch.wattpilot_led_energysaving",
+      entity_awattar: "switch.wattpilot_lumina_strom_awattar",
+      entity_phase_power: "number.wattpilot_3_phase_power_level",
+      entity_restart: "button.wattpilot_restart"
     };
   }
 
-  public setConfig(config: any) {
-    if (!config) throw new Error('Invalid configuration');
-    this.config = config;
+  public setConfig(config) {
+    if (!config.entity_status) {
+      throw new Error("Proszę zdefiniuj encję statusu (entity_status)");
+    }
+    this._config = {
+      name: 'Wattpilot', 
+      ...config
+    };
   }
-
+  
   set hass(hass: HomeAssistant) {
     this._hass = hass;
 
