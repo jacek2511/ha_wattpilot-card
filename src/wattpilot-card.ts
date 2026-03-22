@@ -562,6 +562,178 @@ private _hass: any;
       }
     }
   }
+
+  private bindUIElement(selector: string, domain: string, service: string, valueKey: string = 'value'): void {
+    if (!this.shadowRoot) return;
+    const el = this.shadowRoot.querySelector(selector) as any;
+    if (!el) return;
+
+    const isTime = el.dataset.istime === 'true';
+    const isPower = el.dataset.ispower === 'true';
+    const isPrice = el.dataset.isprice === 'true' || selector.includes('price');
+    const confKey = el.dataset.entity;
+
+    // Obsługa zdarzenia 'input' (wizualna aktualizacja tekstu podczas przesuwania suwaka)
+    if (el.tagName === 'INPUT') {
+      el.addEventListener('input', (e: any) => {
+        const txtEl = this.shadowRoot?.querySelector(`${selector}-txt`) as HTMLElement;
+        if (txtEl) {
+          let suffix = '';
+          if (isTime) suffix = 'm';
+          else if (isPower) suffix = 'kW';
+          else if (selector.includes('lvl')) suffix = 'A';
+          else if (isPrice) suffix = '€';
+          else suffix = '%';
+
+          txtEl.innerText = `${e.target.value}${suffix}`;
+        }
+      });
+    }
+
+    // Obsługa zdarzenia 'change' (wysyłanie danych do Home Assistant)
+    el.addEventListener('change', (e: any) => {
+      if (!this.config[confKey]) return;
+      
+      let val = el.tagName === 'HA-SWITCH' ? null : e.target.value;
+
+      // 1. Logika dla zegara (input_datetime)
+      if (el.type === 'time' && val !== null) {
+        this._hass.callService('input_datetime', 'set_datetime', {
+          entity_id: this.config[confKey],
+          time: val + ":00"
+        });
+        setTimeout(() => el.blur(), 500);
+        return;
+      }
+
+      // 2. Konwersja jednostek przed wysłaniem przez helpery
+      if (val !== null) {
+        if (isTime) val = helpers.minToMs(val);
+        if (isPower) val = helpers.kwToW(val);
+        if (isPrice) val = helpers.euroToCents(val);
+      }
+
+      const payload: any = { entity_id: this.config[confKey] };
+      if (val !== null) payload[valueKey] = val;
+
+      const srv = el.tagName === 'HA-SWITCH' ? (el.checked ? 'turn_on' : 'turn_off') : service;
+      this._hass.callService(domain, srv, payload);
+
+      if (el.tagName === 'INPUT') setTimeout(() => el.blur(), 500);
+    });
+  }
+
+  private updateUIElement(selector: string, states: any): void {
+    if (!this.shadowRoot) return;
+    const el = this.shadowRoot.querySelector(selector) as any;
+    if (!el) return;
+    
+    const confKey = el.dataset.entity;
+    if (!confKey || !this.config[confKey]) return;
+
+    const entity = states[this.config[confKey]];
+    if (!entity) return;
+
+    // 1. Obsługa błędów wewnętrznych (Internal Error)
+    if (selector === '#internal-error-txt') {
+      const state = (entity.state || '').toLowerCase();
+      const hasError = state !== 'none' && state !== '0' && state !== 'unknown' && state !== 'unavailable';
+      el.innerText = hasError ? entity.state : 'None';
+      el.style.color = hasError ? '#f44336' : 'var(--primary-text-color)';
+      return;
+    }
+
+    // 2. Obsługa Firmware Update
+    if (selector === '#firmware-update-txt') {
+      const isUpdate = entity.state === 'on';
+      const inProgress = entity.attributes.in_progress === true;
+      const pct = entity.attributes.update_percentage;
+      
+      el.innerText = isUpdate ? "Update Available" : "No Update";
+      el.style.color = isUpdate ? "#4caf50" : "inherit";
+
+      const vTxt = this.shadowRoot.querySelector('#firmware-version-txt') as HTMLElement;
+      if (vTxt) {
+        vTxt.innerText = `${entity.attributes.installed_version || '--'} / ${entity.attributes.latest_version || '--'}`;
+      }
+
+      const btn = this.shadowRoot.querySelector('#btn-install-update') as HTMLElement;
+      const progCont = this.shadowRoot.querySelector('#update-progress-container') as HTMLElement;
+      const progBar = this.shadowRoot.querySelector('#update-progress-bar') as HTMLElement;
+
+      if (inProgress && pct !== null) {
+        if (progCont) progCont.style.display = 'block';
+        if (progBar) {
+          progBar.style.display = 'block';
+          progBar.style.width = `${pct}%`;
+        }
+        el.innerText = `Updating: ${pct}%`;
+        if (btn) btn.style.display = 'none';
+      } else {
+        if (progCont) progCont.style.display = 'none';
+        if (btn) btn.style.display = isUpdate ? 'block' : 'none';
+      }
+      return;
+    }
+
+    // 3. Obsługa HA-SWITCH
+    if (el.tagName === 'HA-SWITCH') {
+      el.checked = entity.state === 'on';
+    } 
+    
+    // 4. Obsługa SELECT (Dynamiczne budowanie listy opcji jeśli pusta)
+    else if (el.tagName === 'SELECT') {
+      if (el.children.length === 0 && entity.attributes.options) {
+        entity.attributes.options.forEach((opt: string) => {
+          const option = document.createElement('option');
+          option.value = opt;
+          option.innerText = opt;
+          el.appendChild(option);
+        });
+      }
+      if (document.activeElement !== el) el.value = entity.state;
+    } 
+    
+    // 5. Obsługa INPUT (przeliczanie jednostek do wyświetlenia)
+    else if (el.tagName === 'INPUT') {
+      if (document.activeElement === el) return;
+
+      const isTime = el.dataset.istime === 'true';
+      const isPower = el.dataset.ispower === 'true';
+      const isPrice = el.dataset.isprice === 'true' || selector.includes('price');
+
+      if (el.type === 'time') {
+        if (entity.state && entity.state.includes(':')) {
+          el.value = entity.state.substring(0, 5);
+        }
+        return;
+      }
+
+      let displayVal = entity.state;
+      if (isTime) {
+        displayVal = helpers.msToMin(entity.state);
+      } else if (isPower) {
+        displayVal = helpers.wToKw(entity.state);
+      } else if (isPrice) {
+        displayVal = helpers.centsToEuro(entity.state);
+      }
+
+      el.value = displayVal;
+
+      // Aktualizacja towarzyszącego tekstu (suffix)
+      const txtEl = this.shadowRoot.querySelector(`${selector}-txt`) as HTMLElement;
+      if (txtEl) {
+        let suffix = '';
+        if (isTime) suffix = 'm';
+        else if (isPower) suffix = 'kW';
+        else if (isPrice) suffix = '€';
+        else if (selector.includes('lvl')) suffix = 'A';
+        else suffix = '%';
+
+        txtEl.innerText = `${displayVal}${suffix}`;
+      }
+    }
+  }
   
   private bindEvents() {
     this.querySelectorAll('.mode-btn').forEach(btn => {
