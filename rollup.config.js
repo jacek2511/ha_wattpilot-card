@@ -11,12 +11,18 @@ export default {
     inlineDynamicImports: true,
   },
   plugins: [
-    resolve(),
-    typescript(),
+    resolve({
+      browser: true,
+      preferBuiltins: false
+    }),
+    typescript({
+      declaration: false,
+    }),
     terser({
       format: {
         comments: false,
       },
     })
-  ]
+  ],
+  external: [], 
 };
