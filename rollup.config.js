@@ -10,12 +10,16 @@ export default {
     sourcemap: false,
     inlineDynamicImports: true,
   },
-  external: [], 
+  external: [
+    'lit',
+    'lit/decorators.js',
+    'lit/directive.js',
+    'lit/directives/style-map.js',
+    'lit/directives/class-map.js'
+  ],
   plugins: [
     resolve({
       browser: true,
-      preferBuiltins: false,
-      exportConditions: ['browser', 'development', 'module', 'import']
     }),
     typescript({
       declaration: false,
