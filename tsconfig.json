@@ -1,14 +1,17 @@
 {
   "compilerOptions": {
-    "target": "ES2019",
+    "target": "ES2021",
     "module": "ESNext",
-    "lib": ["DOM", "ES2019"],
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "moduleResolution": "node",
+    "experimentalDecorators": true, 
+    "useDefineForClassFields": false,
     "strict": true,
     "noImplicitAny": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "moduleDetection": "force"
   },
   "include": ["src/**/*.ts"]
 }
