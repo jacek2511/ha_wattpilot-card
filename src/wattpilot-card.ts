@@ -22,6 +22,7 @@ private _hass: any;
       name: 'Wattpilot',
       entity_status: "sensor.wattpilot_carstate",
       entity_mode: "select.wattpilot_charging_mode",
+      entity_current: "number.wattpilot_charging_power"
     };
   }
 
