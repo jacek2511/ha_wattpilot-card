@@ -1,7 +1,6 @@
 import { LitElement, html, css, TemplateResult } from 'lit';
 
 export class WattpilotCardEditor extends LitElement {
-  // Deklarujemy właściwości dla LitElement (zamiast dekoratorów)
   static get properties() {
     return {
       hass: { attribute: false },
@@ -9,12 +8,10 @@ export class WattpilotCardEditor extends LitElement {
     };
   }
 
-  // Wewnętrzne zmienne stanu
-  private hass: any;
-  private _config: any;
+  public hass?: any;
+  private _config?: any;
 
   public setConfig(config: any): void {
-    // Kopia głęboka jest kluczowa dla odświeżania widoku
     this._config = JSON.parse(JSON.stringify(config));
   }
 
@@ -24,7 +21,7 @@ export class WattpilotCardEditor extends LitElement {
     const target = ev.target;
     const configKey = target.configValue;
 
-    // Pobranie nowej wartości z eventu
+    // Pobranie nowej wartości z eventu (obsługa ha-entity-picker i standardowych pol)
     const newValue = ev.detail?.value !== undefined ? ev.detail.value : target.value;
 
     if (this._config[configKey] === newValue) return;
@@ -37,8 +34,7 @@ export class WattpilotCardEditor extends LitElement {
       newConfig[configKey] = newValue;
     }
 
-    // Wysłanie nowej konfiguracji do głównej karty
-    this.dispatchEvent(
+        this.dispatchEvent(
       new CustomEvent('config-changed', {
         detail: { config: newConfig },
         bubbles: true,
