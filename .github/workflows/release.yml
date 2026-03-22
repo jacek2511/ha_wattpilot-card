@@ -41,7 +41,7 @@ jobs:
             dist/wattpilot-card.js
             dist/wattpilot-card.js.gz
           generate_release_notes: true
-                    make_latest: true
+          make_latest: true
           append_body: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
