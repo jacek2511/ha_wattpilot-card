@@ -17,12 +17,12 @@ export class WattpilotCardEditor extends LitElement {
     if (!this._config || !this.hass) return;
     const target = ev.target;
     const configKey = target.configValue;
-    const newValue = target.value;
+    const newValue = ev.detail?.value !== undefined ? ev.detail.value : target.value;
 
     if (this._getValue(configKey) === newValue) return;
 
     const newConfig = { ...this._config };
-    if (newValue === "") {
+    if (newValue === "" || newValue === undefined) {
       delete newConfig[configKey];
     } else {
       newConfig[configKey] = newValue;
@@ -129,41 +129,56 @@ export class WattpilotCardEditor extends LitElement {
     return html`
       <div class="card-config">
         ${groups.map(group => html`
-          <div class="group">
-            <div class="group-label">${group.label}</div>
-            <div class="grid">
+          <ha-expansion-panel .header=${group.label} outlined>
+            <div class="content">
               ${group.fields.map(f => html`
                 <ha-entity-picker
                   .label="${f.label}"
                   .hass=${this.hass}
                   .value=${this._getValue(f.key)}
                   .configValue=${f.key}
-                  @change=${this._valueChanged}
+                  @value-changed=${this._valueChanged}
                   allow-custom-entity
                 ></ha-entity-picker>
               `)}
             </div>
-          </div>
+          </ha-expansion-panel>
         `)}
 
-        <div class="group">
-          <div class="group-label">Side Columns (Left/Right)</div>
-          <p style="font-size: 12px; color: var(--secondary-text-color); margin: 0;">
-            Configuration for left1-left5 and right1-right5 (icons, color rules, attributes) 
-            should be managed via the YAML Code Editor.
-          </p>
-        </div>
+        <ha-expansion-panel header="Side Columns (Left/Right)" outlined>
+          <div class="content">
+            <p style="font-size: 12px; color: var(--secondary-text-color); margin: 0;">
+              Configuration for left1-left5 and right1-right5 (icons, color rules, attributes) 
+              should be managed via the YAML Code Editor.
+            </p>
+          </div>
+        </ha-expansion-panel>
       </div>
     `;
   }
 
   static styles = css`
-    .card-config { display: flex; flex-direction: column; gap: 12px; }
-    .group { border: 1px solid var(--divider-color); border-radius: 8px; padding: 10px; background: var(--card-background-color); }
-    .group-label { font-weight: bold; margin-bottom: 8px; color: var(--primary-color); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    ha-entity-picker { width: 100%; }
-    @media (max-width: 450px) { .grid { grid-template-columns: 1fr; } }
+    .card-config {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    ha-expansion-panel {
+      display: block;
+      border: 1px solid var(--divider-color);
+      border-radius: 8px;
+      background: var(--card-background-color);
+    }
+    .content {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      background: var(--primary-background-color);
+    }
+    ha-entity-picker {
+      width: 100%;
+    }
   `;
 }
 
