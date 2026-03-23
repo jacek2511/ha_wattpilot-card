@@ -16,8 +16,8 @@ export class WattpilotCardEditor extends LitElement {
   private _valueChanged(ev: CustomEvent, configKey: string): void {
     if (!this._config || !this.hass) return;
     const newValue = ev.detail.value;
-
     const newConfig = { ...this._config };
+
     if (newValue === "" || newValue === undefined || newValue === null) {
       delete newConfig[configKey];
     } else {
@@ -25,7 +25,6 @@ export class WattpilotCardEditor extends LitElement {
     }
 
     this._config = newConfig;
-
     this.dispatchEvent(new CustomEvent('config-changed', {
       detail: { config: newConfig },
       bubbles: true,
@@ -36,15 +35,12 @@ export class WattpilotCardEditor extends LitElement {
   private _toggleAttribute(configKey: string): void {
     const attrKey = `${configKey}_attr`;
     const newConfig = { ...this._config };
-
     if (newConfig[attrKey] !== undefined) {
       delete newConfig[attrKey];
     } else {
       newConfig[attrKey] = "";
     }
-
     this._config = newConfig;
-
     this.dispatchEvent(new CustomEvent('config-changed', {
       detail: { config: newConfig },
       bubbles: true,
@@ -52,7 +48,7 @@ export class WattpilotCardEditor extends LitElement {
     }));
   }
 
-  // Pomocnicza funkcja renderowania dla Customize View
+  // Kompaktowy renderer dla slotów bocznych
   private renderSideEntity(key: string, label: string): TemplateResult {
     const entityId = this._getValue(key);
     const attrKey = `${key}_attr`;
@@ -95,7 +91,7 @@ export class WattpilotCardEditor extends LitElement {
           </div>
         ` : ''}
 
-        <div class="side-row-tools">
+        <div class="side-tools-grid">
           <ha-selector
             .hass=${this.hass}
             .selector=${{ icon: {} }}
@@ -111,21 +107,20 @@ export class WattpilotCardEditor extends LitElement {
             .label="Icon Color"
             @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, `${key}_color`)}
           ></ha-selector>
-        </div>
 
-        <div class="threshold-container">
-           <ha-selector
+          <ha-selector
             .hass=${this.hass}
             .selector=${{ ui_color: {} }}
             .value=${this._getValue(`${key}_warn_color`)}
             .label="Warn Color"
             @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, `${key}_warn_color`)}
           ></ha-selector>
+
           <ha-selector
             .hass=${this.hass}
             .selector=${{ number: { mode: "box" } }}
             .value=${this._getValue(`${key}_threshold`)}
-            .label="Warn Above Value"
+            .label="Above"
             @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, `${key}_threshold`)}
           ></ha-selector>
         </div>
@@ -157,8 +152,7 @@ export class WattpilotCardEditor extends LitElement {
                 const attrKey = `${f.key}_attr`;
                 const isAttrEnabled = this._config[attrKey] !== undefined;
                 const stateObj = entityId ? this.hass.states[entityId] : null;
-                const baseAttrs = ['friendly_name', 'icon', 'unit_of_measurement', 'device_class', 'state_class', 'restored', 'supported_features', 'attribution', 'description'];
-                const hasExtraAttributes = stateObj && Object.keys(stateObj.attributes).some(attr => !baseAttrs.includes(attr));
+                const hasExtraAttributes = stateObj && Object.keys(stateObj.attributes).some(attr => !['friendly_name', 'icon', 'unit_of_measurement', 'device_class', 'state_class', 'restored', 'supported_features', 'attribution', 'description'].includes(attr));
 
                 return html`
                 <div class="field-row">
@@ -181,7 +175,7 @@ export class WattpilotCardEditor extends LitElement {
                     <div class="attr-row">
                       <ha-selector
                         .hass=${this.hass}
-                        .selector=${{ attribute: { entity_id: entityId, hide_attributes: baseAttrs } }}
+                        .selector=${{ attribute: { entity_id: entityId, hide_attributes: ['friendly_name', 'icon', 'unit_of_measurement', 'device_class', 'state_class', 'restored', 'supported_features', 'attribution', 'description'] } }}
                         .value=${this._getValue(attrKey)}
                         .label="Select Attribute"
                         @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, attrKey)}
@@ -194,19 +188,24 @@ export class WattpilotCardEditor extends LitElement {
           </ha-expansion-panel>
         `)}
 
-        <ha-expansion-panel outlined header="Customize View (Side Columns)">
+        <ha-expansion-panel outlined header="Customize View">
           <ha-icon slot="header" icon="hass:palette-outline" class="header-icon"></ha-icon>
-          <div class="fields-container">
-             <div class="side-grid">
-                <div class="side-column">
-                  <div class="column-title">Left Side</div>
-                  ${[1, 2, 3, 4, 5].map(i => this.renderSideEntity(`left${i}`, `Slot Left ${i}`))}
-                </div>
-                <div class="side-column">
-                  <div class="column-title">Right Side</div>
-                  ${[1, 2, 3, 4, 5].map(i => this.renderSideEntity(`right${i}`, `Slot Right ${i}`))}
-                </div>
-             </div>
+          <div class="fields-container-nested">
+            
+            <ha-expansion-panel outlined header="Left Side Column">
+              <ha-icon slot="header" icon="hass:arrow-left-bold-outline" class="header-icon-sub"></ha-icon>
+              <div class="fields-container">
+                ${[1, 2, 3, 4, 5].map(i => this.renderSideEntity(`left${i}`, `Slot L${i}`))}
+              </div>
+            </ha-expansion-panel>
+
+            <ha-expansion-panel outlined header="Right Side Column">
+              <ha-icon slot="header" icon="hass:arrow-right-bold-outline" class="header-icon-sub"></ha-icon>
+              <div class="fields-container">
+                ${[1, 2, 3, 4, 5].map(i => this.renderSideEntity(`right${i}`, `Slot R${i}`))}
+              </div>
+            </ha-expansion-panel>
+
           </div>
         </ha-expansion-panel>
       </div>
@@ -215,25 +214,42 @@ export class WattpilotCardEditor extends LitElement {
 
   static styles = css`
     .card-config { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; }
-    ha-expansion-panel { border-radius: 8px; --ha-card-border-radius: 8px; }
+    ha-expansion-panel { border-radius: 8px; --ha-card-border-radius: 8px; margin-bottom: 4px; }
     .header-icon { color: var(--primary-color); margin-right: 8px; }
-    .fields-container { display: flex; flex-direction: column; gap: 16px; padding: 16px; background: var(--card-background-color); }
+    .header-icon-sub { color: var(--secondary-text-color); margin-right: 8px; --mdc-icon-size: 20px; }
+    
+    .fields-container { display: flex; flex-direction: column; gap: 14px; padding: 16px; background: var(--card-background-color); }
+    .fields-container-nested { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--secondary-background-color); }
+
     .field-row { display: flex; flex-direction: column; gap: 4px; }
     .selector-with-checkbox { display: flex; align-items: center; gap: 8px; }
     .selector-with-checkbox ha-selector { flex-grow: 1; }
-    .checkbox-container { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 40px; }
-    .checkbox-container ha-icon { --mdc-icon-size: 14px; color: var(--secondary-text-color); }
-    .attr-row { padding-left: 20px; border-left: 2px solid var(--primary-color); margin-top: 4px; }
     
-    /* Side Columns Styling */
-    .side-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .side-column { display: flex; flex-direction: column; gap: 12px; }
-    .column-title { font-weight: bold; text-align: center; color: var(--secondary-text-color); border-bottom: 1px solid var(--divider-color); padding-bottom: 4px; }
-    .side-entity-box { border: 1px solid var(--divider-color); border-radius: 8px; padding: 10px; background: var(--secondary-background-color); display: flex; flex-direction: column; gap: 8px; }
-    .side-entity-header { font-size: 0.8em; font-weight: bold; color: var(--primary-color); }
-    .side-row-tools, .threshold-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .checkbox-container { display: flex; flex-direction: column; align-items: center; gap: 0px; min-width: 40px; }
+    .checkbox-container ha-icon { --mdc-icon-size: 14px; color: var(--secondary-text-color); margin-top: -4px; }
     
-    ha-selector { width: 100%; display: block; }
+    .attr-row { padding-left: 16px; border-left: 2px solid var(--primary-color); margin-top: 4px; }
+    
+    /* Side Slots - Compact Design */
+    .side-entity-box { 
+      border-bottom: 1px solid var(--divider-color); 
+      padding-bottom: 12px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 6px; 
+    }
+    .side-entity-box:last-child { border-bottom: none; }
+    .side-entity-header { font-size: 0.75rem; font-weight: bold; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    /* 4 pola w jednym rzędzie (ikona, kolor, kolor ostrzeżenia, próg) */
+    .side-tools-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 8px; 
+      margin-top: 4px;
+    }
+
+    ha-selector { width: 100%; display: block; --paper-input-container-focus-color: var(--primary-color); }
   `;
 }
 
