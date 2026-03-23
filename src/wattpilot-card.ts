@@ -105,8 +105,8 @@ export class WattpilotCard extends LitElement {
   }
 
   private _setPhases(phases: string) {
-    if (!this.config || !this.config.entity_phases) return;
-    const eid = typeof this.config.entity_phases === 'object' ? this.config.entity_phases.entity : this.config.entity_phases;
+    if (!this.config || !this.config.entity_phase) return;
+    const eid = typeof this.config.entity_phase === 'object' ? this.config.entity_phase.entity : this.config.entity_phase;
     this.hass.callService('select', 'select_option', { entity_id: eid, option: phases });
   }
 
@@ -207,10 +207,10 @@ export class WattpilotCard extends LitElement {
     const soc = this._formatValue(this._getState('entity_soc'));
     const socTarget = this._formatValue(this._getState('entity_target_soc') || '100');
     const range = this._getState('entity_range') || '--';
-    const rangeTarget = this._getState('entity_range_target') || '--';
+    const rangeTarget = this._getState('entity_max_range') || '--';
     const power = parseFloat(this._getState('entity_power') || '0').toFixed(1);
     const sessionEnergy = parseFloat(this._getState('entity_energy_session') || '0').toFixed(1);
-    const phases = this._getState('entity_phases') || 'Auto';
+    const phases = this._getState('entity_phase') || 'Auto';
     const timeLeft = this._getState('entity_time_left');
 
     return html`
