@@ -283,8 +283,8 @@ export class WattpilotCard extends LitElement {
             <span>Phases</span>
             <div class="chips">
               <div class="chip ${phases === 'Auto' ? 'active' : ''}" @click=${() => this._setPhases('Auto')}>Auto</div>
-              <div class="chip ${phases === '1' ? 'active' : ''}" @click=${() => this._setPhases('1')}>1</div>
-              <div class="chip ${phases === '3' ? 'active' : ''}" @click=${() => this._setPhases('3')}>3</div>
+              <div class="chip ${phases === '1' ? 'active' : ''}" @click=${() => this._setPhases('1 Phase')}>1</div>
+              <div class="chip ${phases === '3' ? 'active' : ''}" @click=${() => this._setPhases('3 Phases')}>3</div>
             </div>
           </div>
           
