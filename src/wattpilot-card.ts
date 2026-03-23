@@ -304,8 +304,8 @@ export class WattpilotCard extends LitElement {
             <span>Phases</span>
             <div class="chips">
               <div class="chip ${phases === 'Auto' ? 'active' : ''}" @click=${() => this._setPhases('Auto')}>Auto</div>
-              <div class="chip ${phases === '1' ? 'active' : ''}" @click=${() => this._setPhases('1')}>1</div>
-              <div class="chip ${phases === '3' ? 'active' : ''}" @click=${() => this._setPhases('3')}>3</div>
+              <div class="chip ${phases === '1' ? 'active' : ''}" @click=${() => this._setPhases('1 Phase')}>1</div>
+              <div class="chip ${phases === '3' ? 'active' : ''}" @click=${() => this._setPhases('3 Phases')}>3</div>
             </div>
           </div>
           
@@ -360,11 +360,6 @@ export class WattpilotCard extends LitElement {
              </div>
           </div>
     
-          <div class="slider-row">
-            <span class="slider-label">Max Current</span> 
-            <input type="range" min="6" max="32" .value=${this._currentAmps.toString()} @input=${this._handleSliderInput} @change=${this._handleSliderChange}>
-            <span class="amp-box">${this._currentAmps}A</span>
-          </div>
         </div>
       </ha-card>
     `;
