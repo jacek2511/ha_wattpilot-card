@@ -39,16 +39,6 @@ export class WattpilotCard extends LitElement {
     return document.createElement('wattpilot-card-editor');
   }
 
-  public static getStubConfig() {
-    return {
-      type: 'custom:wattpilot-card',
-      name: 'Wattpilot',
-      entity_status: "sensor.wattpilot_carstate",
-      entity_mode: "select.wattpilot_charging_mode",
-      entity_current: "number.wattpilot_charging_power"
-    };
-  }
-
   public setConfig(config: WattpilotConfig) {
     if (!config) throw new Error('Invalid configuration');
     this.config = config;
@@ -58,7 +48,6 @@ export class WattpilotCard extends LitElement {
 
   private _getEntityId(key: string): string | undefined {
     const val = this.config[key];
-    if (!val) return undefined;
     return typeof val === 'object' ? val.entity : val;
   }
 
@@ -75,92 +64,66 @@ export class WattpilotCard extends LitElement {
     return stateObj.state;
   }
 
-  private _parseNum(val: any, fallback: number = 0): number {
-    if (val === undefined || val === null || val === '') return fallback;
-    const parsed = parseFloat(val);
-    return isNaN(parsed) ? fallback : Math.round(parsed);
+  // Zaokrąglanie wartości do jedności
+  private _formatValue(val: any): string {
+    const num = parseFloat(val);
+    return isNaN(num) ? '--' : Math.round(num).toString();
   }
 
   // --- CYKL ŻYCIA ---
 
   connectedCallback() {
     super.connectedCallback();
-    this.startAnimationLoop();
+    this._startAnimation();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.stopAnimationLoop();
+    if (this._mainLoop) clearInterval(this._mainLoop);
   }
 
   protected updated(changedProps: PropertyValues): void {
-    super.updated(changedProps);
-    if (changedProps.has('hass') || changedProps.has('config')) {
-      this.updateCalculatedStates();
-      this.renderLeds(); 
+    if (changedProps.has('hass')) {
+      this._updateStates();
+      this._renderLeds(); 
     }
   }
 
-  private updateCalculatedStates() {
-    if (!this.hass || !this.config) return;
-
-    const status = (this._getEntityStateOrAttribute('entity_status') || 'Unknown').toLowerCase();
-    const chargingId = this._getEntityId('entity_charging');
-    const newIsCharging = (chargingId && this.hass.states[chargingId]?.state === 'on') || 
-                           status.includes('charging');
-
-    if (newIsCharging !== this._isCharging) {
-      this._isCharging = newIsCharging;
-    }
+  private _updateStates() {
+    const status = (this._getEntityStateOrAttribute('entity_status') || '').toLowerCase();
+    this._isCharging = status.includes('charging');
 
     const currId = this._getEntityId('entity_current');
-    const currEnt = currId ? this.hass.states[currId] : undefined;
-    if (currEnt && !this._isInteractingC) {
-      this._currentAmps = parseInt(currEnt.state, 10) || 6;
+    if (currId && !this._isInteractingC) {
+      const state = this.hass.states[currId]?.state;
+      this._currentAmps = state ? parseInt(state, 10) : 6;
     }
   }
 
-  // --- PIERŚCIEŃ LED ---
-
-  private startAnimationLoop() {
-    if (!this._mainLoop) {
-      this._mainLoop = setInterval(() => {
-        this.animIdx = (this.animIdx + 1) % 32;
-        if (this._isCharging) this.renderLeds();
-      }, 100);
-    }
-  }
-
-  private stopAnimationLoop() {
-    if (this._mainLoop) {
-      clearInterval(this._mainLoop);
-      this._mainLoop = null;
-      this.renderLeds();
-    }
-  }
-
-  private renderLeds(): void {
-    if (!this._leds || this._leds.length === 0) return;
-
-    const status = (this._getEntityStateOrAttribute('entity_status') || '').toLowerCase();
-    const reason = this._getEntityStateOrAttribute('entity_reason') || '';
-    const activeAmps = Math.min(32, this._currentAmps || 6);
-
-    this._leds.forEach((l, idx) => {
-      l.className = 'led';
-      l.style.opacity = '0.1'; // Domyślnie przyciemnione
-
+  private _startAnimation() {
+    this._mainLoop = setInterval(() => {
       if (this._isCharging) {
-        if (idx < activeAmps) {
+        this.animIdx = (this.animIdx + 1) % 32;
+        this._renderLeds();
+      }
+    }, 100);
+  }
+
+  private _renderLeds(): void {
+    if (!this._leds?.length) return;
+    const activeAmps = Math.min(32, this._currentAmps);
+    const status = (this._getEntityStateOrAttribute('entity_status') || '').toLowerCase();
+
+    this._leds.forEach((l, i) => {
+      l.className = 'led';
+      l.style.opacity = '0.1';
+      if (i < activeAmps) {
+        l.style.opacity = '1';
+        if (this._isCharging) {
           l.classList.add('blue');
-          // Efekt "biegającego" punktu
-          l.style.opacity = (idx === this.animIdx) ? '1' : '0.4';
-        }
-      } else {
-        if (idx < activeAmps) {
-          l.style.opacity = '1';
-          if (reason === 'NotChargingBecauseFallbackAwattar') l.classList.add('blue-blink');
-          else if (status.includes('wait')) l.classList.add('yellow');
+          l.style.opacity = (i === this.animIdx) ? '1' : '0.3';
+        } else {
+          if (status.includes('wait')) l.classList.add('yellow');
           else if (status.includes('complete')) l.classList.add('green');
           else l.classList.add('blue');
         }
@@ -168,16 +131,7 @@ export class WattpilotCard extends LitElement {
     });
   }
 
-  private _renderLedRing(): TemplateResult[] {
-    return Array.from({ length: 32 }).map((_, i) => {
-      const angle = (i / 32) * 360 - 90;
-      return html`
-        <div class="led" style="transform: rotate(${angle}deg) translate(26px) rotate(${-angle}deg)"></div>
-      `;
-    });
-  }
-
-  // --- RENDEROWANIE KOLUMN ---
+  // --- RENDEROWANIE KOLUMN (Z poprawionym wyrównaniem) ---
 
   private _renderSideColumn(side: 'left' | 'right'): TemplateResult {
     const rows = [];
@@ -189,35 +143,37 @@ export class WattpilotCard extends LitElement {
       const stateObj = this.hass.states[entityId];
       if (!stateObj) continue;
 
-      const val = (typeof cfg === 'object' && cfg.attribute) ? stateObj.attributes[cfg.attribute] : stateObj.state;
+      const rawVal = (typeof cfg === 'object' && cfg.attribute) ? stateObj.attributes[cfg.attribute] : stateObj.state;
+      const val = this._formatValue(rawVal);
+      const unit = (typeof cfg === 'object' ? cfg.unit : undefined) || stateObj.attributes.unit_of_measurement || '';
       const icon = (typeof cfg === 'object' ? cfg.icon : undefined) || stateObj.attributes.icon || 'mdi:dots-horizontal';
       
       rows.push(html`
-        <div class="data-row">
-          <ha-icon icon="${icon}"></ha-icon>
-          <span>${val}${stateObj.attributes.unit_of_measurement || ''}</span>
+        <div class="data-row ${side}">
+          ${side === 'left' 
+            ? html`<ha-icon icon="${icon}"></ha-icon><span>${val}${unit}</span>`
+            : html`<span>${val}${unit}</span><ha-icon icon="${icon}"></ha-icon>`
+          }
         </div>
       `);
     }
     return html`<div class="side-column">${rows}</div>`;
   }
 
-  // --- GŁÓWNY RENDERER ---  
-
   protected render(): TemplateResult {
-    if (!this.hass || !this.config) return html``;
-
     const mode = this._getEntityStateOrAttribute('entity_mode') || 'Default';
-    const soc = this._parseNum(this._getEntityStateOrAttribute('entity_soc'));
-    const socMax = this._parseNum(this._getEntityStateOrAttribute('entity_target_soc'), 100);
+    const soc = this._formatValue(this._getEntityStateOrAttribute('entity_soc'));
+    const socMax = this._formatValue(this._getEntityStateOrAttribute('entity_target_soc'));
     const power = this._getEntityStateOrAttribute('entity_power') || '0.0';
-    const stateVal = this._getEntityStateOrAttribute('entity_status') || '--';
+    const energySession = this._formatValue(this._getEntityStateOrAttribute('entity_energy_session'));
+    const phases = this._getEntityStateOrAttribute('entity_phases') || '--';
+    const timeLeft = this._getEntityStateOrAttribute('entity_time_left');
 
     return html`
       <ha-card>
         <div class="card-header">
           <span class="reason-badge">${this._getEntityStateOrAttribute('entity_reason') || 'Wattpilot'}</span>
-          <span class="status-badge">${stateVal}</span>
+          <span class="status-badge">${this._getEntityStateOrAttribute('entity_status') || '--'}</span>
         </div>
 
         <div class="mode-row">
@@ -242,9 +198,8 @@ export class WattpilotCard extends LitElement {
             ${this._renderSideColumn('left')}
             
             <div class="led-wrapper">
-              <div id="led-ring">${this._renderLedRing()}</div>
+              <div id="led-ring">${Array.from({length:32}).map((_,i)=>html`<div class="led" style="transform: rotate(${i*11.25-90}deg) translate(26px)"></div>`)}</div>
               <img src="${WATT_IMG}" class="device-img">
-              <div class="power-overlay">${power} kW</div>
             </div>
 
             ${this._renderSideColumn('right')}
@@ -255,27 +210,42 @@ export class WattpilotCard extends LitElement {
               <div id="soc-bar" style="width: ${soc}%"></div>
               <span class="soc-text-label">${soc} / ${socMax} %</span>
             </div>
+            
+            <div class="power-main-display">${power} kW</div>
+            
+            <div class="power-details-row">
+              <span>${this._currentAmps} A</span> | 
+              <span>${energySession} kWh</span> | 
+              <span>${phases} φ</span>
+            </div>
+
+            ${this._isCharging && timeLeft ? html`<div class="time-remaining">Pozostało: ${timeLeft}</div>` : ''}
           </div>
 
           <div class="sub-panel ${this._activePanel === 'settings' ? '' : 'hidden'}">
-            <div class="section-title">SYSTEM SETTINGS</div>
-            <button class="restart-btn" @click=${() => this._callService('restart')}>RESTART DEVICE</button>
+            <div class="section-title">USTAWIENIA SYSTEMU</div>
+            <button class="restart-btn" @click=${() => this._callService('restart')}>RESTART URZĄDZENIA</button>
+          </div>
+
+          <div class="sub-panel ${this._activePanel === 'info' ? '' : 'hidden'}">
+            <div class="section-title">INFORMACJE</div>
+            <div class="info-grid">
+               <div>Total Energy: ${this._formatValue(this._getEntityStateOrAttribute('entity_energy_total'))} kWh</div>
+            </div>
           </div>
 
           <div class="divider"></div>
           
           <div class="section-header">
-            <div class="section-title">CHARGE CURRENT</div>
+            <div class="section-title">PRĄD ŁADOWANIA</div>
             <div class="header-actions">
-              <ha-icon icon="mdi:cog" class="sub-menu-trigger" @click=${() => this._togglePanel('settings')}></ha-icon>
+              <ha-icon icon="mdi:information-outline" @click=${() => this._togglePanel('info')}></ha-icon>
+              <ha-icon icon="mdi:cog" @click=${() => this._togglePanel('settings')}></ha-icon>
             </div>
           </div>
 
-          <div class="control-row">
-            <input type="range" min="6" max="32" 
-                   .value=${this._currentAmps}
-                   @input=${this.handleSliderInput}
-                   @change=${this.handleSliderChange}>
+          <div class="control-row slider-container">
+            <input type="range" min="6" max="32" .value=${this._currentAmps} @input=${this._handleSliderInput} @change=${this._handleSliderChange}>
             <span class="amp-label">${this._currentAmps} A</span>
           </div>
         </div>
@@ -283,38 +253,33 @@ export class WattpilotCard extends LitElement {
     `;
   }
 
-  // --- HANDLERY I AKCJE ---
+  // --- LOGIKA AKCJI ---
 
-  private _togglePanel(panel: string) {
-    this._activePanel = this._activePanel === panel ? '' : panel;
-  }
-
+  private _togglePanel(p: string) { this._activePanel = this._activePanel === p ? '' : p; }
+  
   private _setMode(mode: string) {
     const eid = this._getEntityId('entity_mode');
     if (eid) this.hass.callService('select', 'select_option', { entity_id: eid, option: mode });
   }
 
   private _callService(action: string) {
-    let domain = 'button', service = 'press', entity = '';
+    let entity = '';
     if (action === 'start_charge') entity = this._getEntityId('entity_start') || '';
     if (action === 'stop_charge') entity = this._getEntityId('entity_stop') || '';
     if (action === 'force_charge') entity = this._getEntityId('entity_force') || '';
     if (action === 'restart') entity = this._getEntityId('entity_restart') || '';
-    if (entity) this.hass.callService(domain, service, { entity_id: entity });
+    if (entity) this.hass.callService('button', 'press', { entity_id: entity });
   }
 
-  private handleSliderInput(e: any) {
+  private _handleSliderInput(e: any) {
     this._isInteractingC = true;
     this._currentAmps = parseInt(e.target.value);
-    this.renderLeds();
+    this._renderLeds();
   }
 
-  private handleSliderChange(e: any) {
-    const val = parseInt(e.target.value);
+  private _handleSliderChange(e: any) {
     const eid = this._getEntityId('entity_current');
-    if (eid) {
-      this.hass.callService('number', 'set_value', { entity_id: eid, value: val });
-    }
+    if (eid) this.hass.callService('number', 'set_value', { entity_id: eid, value: e.target.value });
     setTimeout(() => { this._isInteractingC = false; }, 1500);
   }
 
@@ -322,33 +287,19 @@ export class WattpilotCard extends LitElement {
     cardStyles,
     css`
       .hidden { display: none !important; }
-      .power-overlay {
-        position: absolute;
-        bottom: -15px;
-        width: 100%;
-        text-align: center;
-        font-weight: bold;
-        font-size: 1.1em;
-      }
-      .restart-btn {
-        width: 100%;
-        padding: 8px;
-        color: #ef4444;
-        background: transparent;
-        border: 1px solid #ef4444;
-        cursor: pointer;
-        font-weight: bold;
-      }
+      /* Wyrównanie prawej kolumny */
+      .data-row.right { justify-content: flex-end; text-align: right; }
+      .data-row.right ha-icon { margin-left: 8px; margin-right: 0; }
+      
+      /* Statystyki pod paskiem */
+      .power-main-display { font-size: 28px; font-weight: bold; text-align: center; margin-top: 8px; color: var(--primary-text-color); }
+      .power-details-row { text-align: center; font-size: 14px; color: var(--secondary-text-color); margin-bottom: 4px; }
+      .time-remaining { text-align: center; font-size: 13px; color: var(--primary-color); font-weight: 500; padding-bottom: 8px; }
+      
+      .header-actions ha-icon { cursor: pointer; margin-left: 10px; opacity: 0.7; }
+      .header-actions ha-icon:hover { opacity: 1; }
+      
+      .restart-btn { width: 100%; padding: 10px; color: #ef4444; border: 1px solid #ef4444; background: transparent; cursor: pointer; font-weight: bold; }
     `
   ];
-
-  getCardSize() { return 4; }
 }
-
-(window as any).customCards = (window as any).customCards || [];
-(window as any).customCards.push({
-  type: 'wattpilot-card',
-  name: 'Wattpilot Card',
-  preview: true,
-  description: 'Custom card for Fronius Wattpilot',
-});
