@@ -17,8 +17,6 @@ export class WattpilotCardEditor extends LitElement {
     if (!this._config || !this.hass) return;
     const newValue = ev.detail.value;
 
-    if (this._getValue(configKey) === newValue) return;
-
     const newConfig = { ...this._config };
     if (newValue === "" || newValue === undefined || newValue === null) {
       delete newConfig[configKey];
@@ -31,6 +29,20 @@ export class WattpilotCardEditor extends LitElement {
       bubbles: true,
       composed: true,
     }));
+  }
+
+  // Funkcja do obsługi przełącznika atrybutów
+  private _toggleAttribute(configKey: string): void {
+    const attrKey = `${configKey}_attr`;
+    if (this._config[attrKey] !== undefined) {
+      const newConfig = { ...this._config };
+      delete newConfig[attrKey];
+      this.dispatchEvent(new CustomEvent('config-changed', {
+        detail: { config: newConfig },
+        bubbles: true,
+        composed: true,
+      }));
+    }
   }
 
   render(): TemplateResult {
@@ -139,37 +151,42 @@ export class WattpilotCardEditor extends LitElement {
             <div class="fields-container">
               ${group.fields.map(f => {
                 const entityId = this._getValue(f.key);
-                const stateObj = entityId ? this.hass.states[entityId] : null;
+                const attrKey = `${f.key}_attr`;
+                const isAttrEnabled = this._config[attrKey] !== undefined;
                 
-                // Lista atrybutów technicznych do ukrycia
-                const baseAttrs = ['friendly_name', 'icon', 'unit_of_measurement', 'device_class', 'state_class', 'restored', 'supported_features', 'attribution'];
-                
-                // Sprawdzenie czy encja ma atrybuty inne niż techniczne
-                const hasExtraAttributes = stateObj && Object.keys(stateObj.attributes).some(attr => !baseAttrs.includes(attr));
-
                 return html`
                 <div class="field-row">
-                  <ha-selector
-                    .hass=${this.hass}
-                    .selector=${{ entity: {} }}
-                    .value=${entityId}
-                    .label=${f.label}
-                    @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, f.key)}
-                  ></ha-selector>
+                  <div class="selector-with-checkbox">
+                    <ha-selector
+                      .hass=${this.hass}
+                      .selector=${{ entity: {} }}
+                      .value=${entityId}
+                      .label=${f.label}
+                      @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, f.key)}
+                    ></ha-selector>
+                    
+                    <div class="checkbox-container" title="Use Attribute">
+                      <ha-checkbox
+                        .checked=${isAttrEnabled}
+                        @change=${() => this._toggleAttribute(f.key)}
+                      ></ha-checkbox>
+                      <ha-icon icon="hass:file-tree"></ha-icon>
+                    </div>
+                  </div>
 
-                  ${hasExtraAttributes ? html`
+                  ${isAttrEnabled ? html`
                     <div class="attr-row">
                       <ha-selector
                         .hass=${this.hass}
                         .selector=${{ 
                           attribute: { 
                             entity_id: entityId,
-                            hide_attributes: baseAttrs
+                            hide_attributes: ['friendly_name', 'icon', 'unit_of_measurement', 'device_class', 'state_class', 'restored', 'supported_features', 'attribution', 'description']
                           } 
                         }}
-                        .value=${this._getValue(`${f.key}_attr`)}
-                        .label="Use attribute (optional)"
-                        @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, `${f.key}_attr`)}
+                        .value=${this._getValue(attrKey)}
+                        .label="Select Attribute"
+                        @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, attrKey)}
                       ></ha-selector>
                     </div>
                   ` : ''}
@@ -178,39 +195,50 @@ export class WattpilotCardEditor extends LitElement {
             </div>
           </ha-expansion-panel>
         `)}
-        
-        <ha-expansion-panel outlined header="Side Columns (Manual Only)">
-          <div slot="header" class="header-content">
-            <ha-icon icon="hass:code-braces"></ha-icon>
-            <span>Side Columns (Left/Right)</span>
-          </div>
-          <p class="note">
-            Configuration for left1-left5 and right1-right5 (icons, color rules, attributes) 
-            should be managed via the YAML Code Editor.
-          </p>
-        </ha-expansion-panel>
       </div>
     `;
   }
 
   static styles = css`
-    :host { display: block; }
     .card-config { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; }
     ha-expansion-panel { border-radius: 8px; --ha-card-border-radius: 8px; }
     .header-content { display: flex; align-items: center; gap: 12px; font-weight: 500; }
     .header-content ha-icon { color: var(--primary-color); }
     .fields-container { display: flex; flex-direction: column; gap: 16px; padding: 16px; background: var(--card-background-color); }
     
-    .field-row { display: flex; flex-direction: column; gap: 2px; }
+    .field-row { display: flex; flex-direction: column; gap: 4px; }
+    
+    .selector-with-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .selector-with-checkbox ha-selector {
+      flex-grow: 1;
+    }
+
+    .checkbox-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      min-width: 40px;
+    }
+
+    .checkbox-container ha-icon {
+      --mdc-icon-size: 14px;
+      color: var(--secondary-text-color);
+    }
+
     .attr-row { 
       padding-left: 20px; 
-      border-left: 2px solid var(--divider-color);
-      margin-top: -4px;
+      border-left: 2px solid var(--primary-color);
+      margin-top: 4px;
       margin-bottom: 8px;
     }
 
     ha-selector { width: 100%; display: block; }
-    .note { font-size: 12px; color: var(--secondary-text-color); margin: 0; padding: 16px; line-height: 1.4; background: var(--secondary-background-color); }
   `;
 }
 
