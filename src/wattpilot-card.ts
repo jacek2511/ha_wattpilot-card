@@ -63,13 +63,20 @@ export class WattpilotCard extends LitElement {
     for (let i = 1; i <= 5; i++) {
       const cfg = this.config[`${side}${i}`];
       if (!cfg) continue;
-      const stateObj = this.hass.states[typeof cfg === 'object' ? cfg.entity : cfg];
+      
+      const eid = typeof cfg === 'object' ? cfg.entity : cfg;
+      const stateObj = this.hass.states[eid];
       if (!stateObj) continue;
+
       const val = Math.round(parseFloat(stateObj.state)) || stateObj.state;
-      const unit = cfg.unit || stateObj.attributes.unit_of_measurement || '';
+      const unit = (typeof cfg === 'object' ? cfg.unit : undefined) || stateObj.attributes.unit_of_measurement || '';
+      const icon = cfg.icon || stateObj.attributes.icon;
+
       rows.push(html`
         <div class="data-row ${side}">
-          ${side === 'left' ? html`<ha-icon .icon=${cfg.icon || stateObj.attributes.icon}></ha-icon> <span>${val}${unit}</span>` : html Luck`<span>${val}${unit}</span> <ha-icon .icon=${cfg.icon || stateObj.attributes.icon}></ha-icon>`}
+          ${side === 'left' 
+            ? html`<ha-icon .icon=${icon}></ha-icon><span>${val}${unit}</span>` 
+            : html`<span>${val}${unit}</span><ha-icon .icon=${icon}></ha-icon>`}
         </div>
       `);
     }
