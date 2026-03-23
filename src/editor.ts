@@ -24,7 +24,7 @@ export class WattpilotCardEditor extends LitElement {
       newConfig[configKey] = newValue;
     }
 
-    this._config = newConfig; // Aktualizacja stanu lokalnego
+    this._config = newConfig;
 
     this.dispatchEvent(new CustomEvent('config-changed', {
       detail: { config: newConfig },
@@ -33,7 +33,6 @@ export class WattpilotCardEditor extends LitElement {
     }));
   }
 
-  // Poprawiona funkcja przełączania atrybutu
   private _toggleAttribute(configKey: string): void {
     const attrKey = `${configKey}_attr`;
     const newConfig = { ...this._config };
@@ -41,10 +40,10 @@ export class WattpilotCardEditor extends LitElement {
     if (newConfig[attrKey] !== undefined) {
       delete newConfig[attrKey];
     } else {
-      newConfig[attrKey] = ""; // Inicjalizacja klucza, by pokazać selector
+      newConfig[attrKey] = "";
     }
 
-    this._config = newConfig; // Wymuszenie re-renderu w LitElement
+    this._config = newConfig;
 
     this.dispatchEvent(new CustomEvent('config-changed', {
       detail: { config: newConfig },
@@ -162,6 +161,11 @@ export class WattpilotCardEditor extends LitElement {
                 const attrKey = `${f.key}_attr`;
                 const isAttrEnabled = this._config[attrKey] !== undefined;
                 
+                // Logika wykrywania "użytecznych" atrybutów
+                const stateObj = entityId ? this.hass.states[entityId] : null;
+                const baseAttrs = ['friendly_name', 'icon', 'unit_of_measurement', 'device_class', 'state_class', 'restored', 'supported_features', 'attribution', 'description'];
+                const hasExtraAttributes = stateObj && Object.keys(stateObj.attributes).some(attr => !baseAttrs.includes(attr));
+
                 return html`
                 <div class="field-row">
                   <div class="selector-with-checkbox">
@@ -173,26 +177,28 @@ export class WattpilotCardEditor extends LitElement {
                       @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, f.key)}
                     ></ha-selector>
                     
-                    <div class="checkbox-container" title="Use Attribute">
-                      <ha-checkbox
-                        .checked=${isAttrEnabled}
-                        @change=${(e: Event) => {
-                          e.stopPropagation();
-                          this._toggleAttribute(f.key);
-                        }}
-                      ></ha-checkbox>
-                      <ha-icon icon="hass:file-tree"></ha-icon>
-                    </div>
+                    ${hasExtraAttributes ? html`
+                      <div class="checkbox-container" title="Use Attribute">
+                        <ha-checkbox
+                          .checked=${isAttrEnabled}
+                          @change=${(e: Event) => {
+                            e.stopPropagation();
+                            this._toggleAttribute(f.key);
+                          }}
+                        ></ha-checkbox>
+                        <ha-icon icon="hass:file-tree"></ha-icon>
+                      </div>
+                    ` : ''}
                   </div>
 
-                  ${isAttrEnabled ? html`
+                  ${isAttrEnabled && hasExtraAttributes ? html`
                     <div class="attr-row">
                       <ha-selector
                         .hass=${this.hass}
                         .selector=${{ 
                           attribute: { 
                             entity_id: entityId,
-                            hide_attributes: ['friendly_name', 'icon', 'unit_of_measurement', 'device_class', 'state_class', 'restored', 'supported_features', 'attribution', 'description']
+                            hide_attributes: baseAttrs
                           } 
                         }}
                         .value=${this._getValue(attrKey)}
@@ -235,10 +241,6 @@ export class WattpilotCardEditor extends LitElement {
       align-items: center;
       gap: 2px;
       min-width: 40px;
-    }
-
-    .checkbox-container ha-checkbox {
-      --mdc-theme-secondary: var(--primary-color);
     }
 
     .checkbox-container ha-icon {
