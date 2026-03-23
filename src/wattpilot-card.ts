@@ -28,6 +28,9 @@ class WattpilotCard extends HTMLElement {
   private _currentMode: string = '';
   private _currentPhases: string = '';
   private _currentReason: string = '';
+  private _domCache: { [selector: string]: Element | null } = {};
+  private _leds: HTMLElement[] = [];
+  private _isCharging: boolean = false;
 
   constructor() {
     super();
@@ -52,7 +55,9 @@ class WattpilotCard extends HTMLElement {
     this.config = config;
   }
 
+  // POPRAWIONE: Zoptymalizowany setter hass, wyeliminowano startAnimationLoop()
   set hass(hass: HomeAssistant) {
+    const oldHass = this._hass;
     this._hass = hass;
 
     if (!this.contentLoaded && this.shadowRoot) {
@@ -61,9 +66,10 @@ class WattpilotCard extends HTMLElement {
       
       this.createLedRing();
       this.bindEvents();
-      this.startAnimationLoop();
+      this.updateData(); // Pierwsze, wymuszone ładowanie danych
+    } else if (this.contentLoaded && this.shouldUpdate(oldHass, hass)) {
+      this.updateData(); // Aktualizuj tylko, jeśli zmieniły się przypisane encje
     }
-    this.updateData();
   }
 
   private _getEl = <T extends Element>(selector: string): T | null => {
@@ -401,7 +407,7 @@ class WattpilotCard extends HTMLElement {
     `;
   }
 
-private createLedRing() {
+  private createLedRing() {
     const ring = this._getEl<HTMLElement>('#led-ring');
     if (!ring) return;
     ring.innerHTML = '';
@@ -452,6 +458,7 @@ private createLedRing() {
           const tailPos = (pos - t + 32) % 32;
           if (tailPos < activeAmps) {
             const led = this._leds[tailPos];
+            if (!led) continue;
             led.classList.add('blue', 'breathing');
 
             if (t === 0) {
