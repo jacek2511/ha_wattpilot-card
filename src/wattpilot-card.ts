@@ -100,7 +100,7 @@ export class WattpilotCard extends LitElement {
           <div class="led-wrapper">
             <div id="led-ring">
               ${Array.from({length:32}).map((_,i) => html`
-                <div class="led" style="transform: rotate(${i*11.25-90}deg) translate(25px) translateY(32px)"></div>
+                <div class="led" style="transform: rotate(${i*11.25-90}deg) translate(20px) translateY(38px)"></div>
               `)}
             </div>
             <img src="${WATT_IMG}" class="device-img">
@@ -175,21 +175,38 @@ export class WattpilotCard extends LitElement {
     setTimeout(() => { this._isInteracting = false; }, 2000);
   }
 
-  static styles = css`
-    ha-card { padding: 4px 12px 12px 12px; background: #1c1c1c; color: white; border-radius: 12px; }
+static styles = css`
+    ha-card { 
+      padding: 0px 12px 12px 12px; 
+      background: #1c1c1c; 
+      color: white; 
+      border-radius: 12px; 
+    }
     
-    .card-header { display: flex; justify-content: space-between; margin-bottom: -8px; margin-bottom: 0px; align-items: center; }
+    /* GÓRA KARTY - ściskanie */
+    .card-header { 
+      display: flex; 
+      justify-content: space-between; 
+      margin-top: -4px; 
+      margin-bottom: -6px; /* Drastyczne zmniejszenie odstępu pod statusami */
+      align-items: center; 
+    }
     .reason-badge { border: 1px solid #333; padding: 1px 8px; border-radius: 12px; color: #666; font-size: 10px; }
     .status-badge { border: 1px solid #03a9f4; color: #03a9f4; padding: 1px 8px; border-radius: 12px; font-weight: bold; font-size: 10px; }
 
-    .top-controls-grid { display: flex; gap: 8px; margin-top: -2px; margin-bottom: 8px; }
+    .top-controls-grid { 
+      display: flex; 
+      gap: 8px; 
+      margin-top: 0px; 
+      margin-bottom: 0px; /* Likwidacja odstępu pod przyciskami */
+    }
     .modes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; flex: 1; }
     .actions-grid { display: flex; flex-direction: column; gap: 4px; width: 80px; }
 
     .mode-btn { 
       background: #262626; border-radius: 6px; display: flex; flex-direction: column; 
       align-items: center; justify-content: center; padding: 2px; cursor: pointer; border: 1px solid transparent;
-      height: 48px; /* dopasowane do wysokości 2 przycisków akcji */
+      height: 44px; 
     }
     .mode-btn.active { border-color: #03a9f4; background: rgba(3,169,244,0.1); }
     .mode-btn ha-icon { --mdc-icon-size: 18px; }
@@ -200,43 +217,63 @@ export class WattpilotCard extends LitElement {
     .start { background: #4caf50; color: black; }
     .stop { background: #f44336; color: white; height: 100%; }
 
-    .visual-center { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .side-column { display: flex; flex-direction: column; gap: 4px; min-width: 80px; }
-    .data-row { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #ccc; white-space: nowrap; }
+    /* ŚRODEK - obrazek i kolumny */
+    .visual-center { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-top: -5px; /* Podciągnięcie obrazka pod przyciski */
+      margin-bottom: 5px; 
+    }
+    .side-column { display: flex; flex-direction: column; gap: 2px; min-width: 80px; }
+    .data-row { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #ccc; white-space: nowrap; height: 20px; }
     .data-row.right { justify-content: flex-end; }
     .data-row ha-icon { --mdc-icon-size: 14px; color: #03a9f4; }
 
-    .led-wrapper { position: relative; width: 100px; height: 110px; display: flex; justify-content: center; align-items: flex-start; padding-top: 5px; }
-    .device-img { width: 80px; z-index: 2; position: relative; }
+    .led-wrapper { position: relative; width: 100px; height: 110px; display: flex; justify-content: center; align-items: flex-start; }
+    .device-img { width: 75px; z-index: 2; position: relative; }
     #led-ring { position: absolute; width: 100%; height: 100%; top: 0; left: 0; }
     .led { position: absolute; top: 50%; left: 50%; width: 3px; height: 3px; background: #4caf50; border-radius: 50%; margin: -1.5px; z-index: 3; }
 
-    .soc-range-row { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 2px; }
+    /* PASEK POSTĘPU - odsunięcie od obrazka */
+    .soc-range-row { 
+      display: flex; 
+      justify-content: space-between; 
+      font-size: 11px; 
+      color: #aaa; 
+      margin-top: 15px; /* Odsunięcie od obrazka */
+      margin-bottom: 2px; 
+    }
     .stat-item { display: flex; align-items: center; gap: 4px; }
     .stat-item ha-icon { --mdc-icon-size: 14px; }
 
     .progress-bar-bg { height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
-    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #f44336, #ffeb3b, #4caf50); transition: width 0.5s ease; }
-    .time-left-text { text-align: center; font-size: 11px; color: #03a9f4; margin-top: 2px; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #f44336, #ffeb3b, #4caf50); }
 
-    .power-row-inline { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
-    .main-power { font-size: 26px; font-weight: bold; }
-    .sub-power { font-size: 12px; color: #777; }
+    /* MOC I DOLNA SEKCJA */
+    .power-row-inline { display: flex; align-items: baseline; gap: 10px; margin-top: 10px; margin-bottom: 15px; }
+    .main-power { font-size: 32px; font-weight: bold; }
+    .sub-power { font-size: 14px; color: #777; }
 
-    .settings-area { border-top: 1px solid #333; padding-top: 12px; margin-top: 12px; display: flex; flex-direction: column; gap: 20px; }
-    .settings-header { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #555; font-weight: bold; margin-bottom: 6px; }
-    .header-icons { display: flex; gap: 10px; color: #888; }
-    .header-icons ha-icon { --mdc-icon-size: 16px; cursor: pointer; }
+    .settings-area { 
+      border-top: 1px solid #333; 
+      padding-top: 15px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 20px; /* Duże odstępy między rzędami ustawień */
+    }
+    .settings-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #555; font-weight: bold; }
+    .header-icons { display: flex; gap: 12px; color: #888; }
+    .header-icons ha-icon { --mdc-icon-size: 18px; cursor: pointer; }
 
-    .phases-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; }
-    .chips { display: flex; gap: 6px; }
-    .chip { background: #333; padding: 3px 10px; border-radius: 10px; font-size: 10px; cursor: pointer; }
-    .chip.active { background: #03a9f4; }
+    .phases-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+    .chips { display: flex; gap: 8px; }
+    .chip { background: #333; padding: 4px 14px; border-radius: 12px; font-size: 11px; cursor: pointer; }
+    .chip.active { background: #03a9f4; color: white; }
     
-    .slider-row { display: flex; align-items: center; gap: 8px; }
-    .slider-label { font-size: 13px; color: #ccc;  min-width: 85px; }
-    input[type=range] { flex: 1; accent-color: #03a9f4; margin: 0; }
-    .amp-box { font-weight: bold; font-size: 12px; min-width: 25px; text-align: right; }
+    .slider-row { display: flex; align-items: center; gap: 10px; }
+    .slider-label { font-size: 14px; color: #ccc; min-width: 90px; }
+    input[type=range] { flex: 1; accent-color: #03a9f4; }
+    .amp-box { font-weight: bold; font-size: 14px; min-width: 30px; text-align: right; }
   `;
-}
 }
