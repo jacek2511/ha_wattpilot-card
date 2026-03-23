@@ -15,7 +15,6 @@ export class WattpilotCardEditor extends LitElement {
 
   private _valueChanged(ev: CustomEvent, configKey: string): void {
     if (!this._config || !this.hass) return;
-    
     const newValue = ev.detail.value;
 
     if (this._getValue(configKey) === newValue) return;
@@ -27,12 +26,11 @@ export class WattpilotCardEditor extends LitElement {
       newConfig[configKey] = newValue;
     }
 
-    const event = new CustomEvent('config-changed', {
+    this.dispatchEvent(new CustomEvent('config-changed', {
       detail: { config: newConfig },
       bubbles: true,
       composed: true,
-    });
-    this.dispatchEvent(event);
+    }));
   }
 
   render(): TemplateResult {
@@ -73,7 +71,7 @@ export class WattpilotCardEditor extends LitElement {
           { key: "entity_target_soc", label: "Target SoC" },
           { key: "entity_min_soc", label: "Minimum SoC" },
           { key: "entity_range", label: "Range (km)" },
-          { key: "entity_range_max", label: "Max Range (km)", attrKey: "entity_maxrange"  },
+          { key: "entity_range_max", label: "Max Range (km)" },
           { key: "entity_charge_end", label: "Charging Time Left" },
         ]
       },
@@ -139,34 +137,44 @@ export class WattpilotCardEditor extends LitElement {
               <span>${group.label}</span>
             </div>
             <div class="fields-container">
-              ${group.fields.map(f => html`
+              ${group.fields.map(f => {
+                const entityId = this._getValue(f.key);
+                const stateObj = entityId ? this.hass.states[entityId] : null;
+                
+                // Lista atrybutów technicznych do ukrycia
+                const baseAttrs = ['friendly_name', 'icon', 'unit_of_measurement', 'device_class', 'state_class', 'restored', 'supported_features', 'attribution'];
+                
+                // Sprawdzenie czy encja ma atrybuty inne niż techniczne
+                const hasExtraAttributes = stateObj && Object.keys(stateObj.attributes).some(attr => !baseAttrs.includes(attr));
+
+                return html`
                 <div class="field-row">
                   <ha-selector
                     .hass=${this.hass}
                     .selector=${{ entity: {} }}
-                    .value=${this._getValue(f.key)}
+                    .value=${entityId}
                     .label=${f.label}
                     @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, f.key)}
                   ></ha-selector>
 
-                  ${f.attrKey ? html`
+                  ${hasExtraAttributes ? html`
                     <div class="attr-row">
                       <ha-selector
                         .hass=${this.hass}
                         .selector=${{ 
                           attribute: { 
-                            entity_id: this._getValue(f.key),
-                            hide_attributes: ["friendly_name", "icon", "unit_of_measurement", "device_class"]
+                            entity_id: entityId,
+                            hide_attributes: baseAttrs
                           } 
                         }}
-                        .value=${this._getValue(f.attrKey)}
-                        .label=${f.attrLabel || "Attribute (optional)"}
-                        @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, f.attrKey!)}
+                        .value=${this._getValue(`${f.key}_attr`)}
+                        .label="Use attribute (optional)"
+                        @value-changed=${(ev: CustomEvent) => this._valueChanged(ev, `${f.key}_attr`)}
                       ></ha-selector>
                     </div>
                   ` : ''}
                 </div>
-              `)}
+              `})}
             </div>
           </ha-expansion-panel>
         `)}
@@ -177,7 +185,8 @@ export class WattpilotCardEditor extends LitElement {
             <span>Side Columns (Left/Right)</span>
           </div>
           <p class="note">
-            Configuration for left1-left5 and right1-right5 should be managed via the YAML Code Editor.
+            Configuration for left1-left5 and right1-right5 (icons, color rules, attributes) 
+            should be managed via the YAML Code Editor.
           </p>
         </ha-expansion-panel>
       </div>
@@ -192,11 +201,12 @@ export class WattpilotCardEditor extends LitElement {
     .header-content ha-icon { color: var(--primary-color); }
     .fields-container { display: flex; flex-direction: column; gap: 16px; padding: 16px; background: var(--card-background-color); }
     
-    .field-row { display: flex; flex-direction: column; gap: 4px; }
+    .field-row { display: flex; flex-direction: column; gap: 2px; }
     .attr-row { 
       padding-left: 20px; 
       border-left: 2px solid var(--divider-color);
-      margin-top: 2px;
+      margin-top: -4px;
+      margin-bottom: 8px;
     }
 
     ha-selector { width: 100%; display: block; }
