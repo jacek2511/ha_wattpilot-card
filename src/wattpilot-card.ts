@@ -22,11 +22,9 @@ interface WattpilotConfig {
 @customElement('wattpilot-card')
 export class WattpilotCard extends LitElement {
   
-  // Właściwości publiczne wymagane przez Home Assistant
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private config!: WattpilotConfig;
 
-  // Stany wewnętrzne (Lit automatycznie przerenderuje komponent po ich zmianie)
   @state() private _currentAmps: number = 6;
   @state() private _isCharging: boolean = false;
   @state() private _activePanel: string = ''; 
@@ -35,7 +33,6 @@ export class WattpilotCard extends LitElement {
   private _mainLoop: any = null;
   private _isInteractingC: boolean = false;
 
-  // Pobieranie referencji do konkretnych elementów DOM (zamiast _getEl)
   @queryAll('.led') private _leds!: NodeListOf<HTMLElement>;
 
   public static getConfigElement() {
@@ -68,7 +65,6 @@ export class WattpilotCard extends LitElement {
   private _getEntityStateOrAttribute(key: string): any {
     const val = this.config[key];
     if (!val) return undefined;
-    
     const entityId = typeof val === 'object' ? val.entity : val;
     if (!entityId || !this.hass.states[entityId]) return undefined;
 
@@ -85,55 +81,38 @@ export class WattpilotCard extends LitElement {
     return isNaN(parsed) ? fallback : Math.round(parsed);
   }
 
-  // --- CYKL ŻYCIA LIT ELEMENT ---
+  // --- CYKL ŻYCIA ---
 
-  // Wywoływane, gdy komponent zostanie dodany do strony
   connectedCallback() {
     super.connectedCallback();
-    if (this._isCharging) {
-      this.startAnimationLoop();
-    }
+    this.startAnimationLoop();
   }
 
-  // Wywoływane, gdy komponent zostanie usunięty ze strony
   disconnectedCallback() {
     super.disconnectedCallback();
     this.stopAnimationLoop();
   }
 
-  // Metoda wywoływana za każdym razem, gdy zmieni się `hass` lub `config`
   protected updated(changedProps: PropertyValues): void {
     super.updated(changedProps);
-
     if (changedProps.has('hass') || changedProps.has('config')) {
       this.updateCalculatedStates();
-      this.renderLeds(); // Ręczna aktualizacja DOM dla pierścienia LED (ze względów wydajnościowych)
+      this.renderLeds(); 
     }
   }
-
-  // --- GŁÓWNA LOGIKA DANYCH ---
 
   private updateCalculatedStates() {
     if (!this.hass || !this.config) return;
 
-    const statusId = this._getEntityId('entity_status');
-    const status = statusId ? (this.hass.states[statusId]?.state || 'Unknown') : 'Unknown';
-    
+    const status = (this._getEntityStateOrAttribute('entity_status') || 'Unknown').toLowerCase();
     const chargingId = this._getEntityId('entity_charging');
     const newIsCharging = (chargingId && this.hass.states[chargingId]?.state === 'on') || 
-                           status.toLowerCase().includes('charging');
+                           status.includes('charging');
 
-    // Zarządzanie pętlą animacji
     if (newIsCharging !== this._isCharging) {
       this._isCharging = newIsCharging;
-      if (this._isCharging) {
-        this.startAnimationLoop();
-      } else {
-        this.stopAnimationLoop();
-      }
     }
 
-    // Aktualizacja prądu, chyba że użytkownik właśnie przesuwa suwak
     const currId = this._getEntityId('entity_current');
     const currEnt = currId ? this.hass.states[currId] : undefined;
     if (currEnt && !this._isInteractingC) {
@@ -141,48 +120,13 @@ export class WattpilotCard extends LitElement {
     }
   }
 
-  // --- AKCJE I ZDARZENIA ---
+  // --- PIERŚCIEŃ LED ---
 
-  private handleServiceCall(domain: string, service: string, entityKey: string, payloadKey: string = 'value', val: any = null) {
-    const entityId = this._getEntityId(entityKey);
-    if (!entityId) return;
-
-    const payload: any = { entity_id: entityId };
-    if (val !== null) payload[payloadKey] = val;
-
-    this.hass.callService(domain, service, payload);
-  }
-
-  private handleSliderChange(e: Event) {
-    const target = e.target as HTMLInputElement;
-    const val = parseInt(target.value);
-    
-    this.handleServiceCall('number', 'set_value', 'entity_current', 'value', val);
-    
-    // Resetujemy flagę interakcji po wysłaniu
-    setTimeout(() => { this._isInteractingC = false; }, 1000);
-  }
-
-  private handleSliderInput(e: Event) {
-    const target = e.target as HTMLInputElement;
-    this._isInteractingC = true; 
-    this._currentAmps = parseInt(target.value);
-    this.renderLeds(); // Szybki update LEDów podczas przesuwania
-  }
-
-  private toggleSubPanel(panelId: string) {
-    this._activePanel = this._activePanel === panelId ? 'none' : panelId;
-  }
-
-  // --- PIERŚCIEŃ LED (Optymalizacja: Bezpośrednie modyfikowanie DOM) ---
-  // Pozostawiamy tę część jako imperatywną modyfikację DOM, 
-  // ponieważ Lit renderujący 32 divy co 100ms zjadłby dużo procesora.
-  
   private startAnimationLoop() {
     if (!this._mainLoop) {
       this._mainLoop = setInterval(() => {
         this.animIdx = (this.animIdx + 1) % 32;
-        this.renderLeds();
+        if (this._isCharging) this.renderLeds();
       }, 100);
     }
   }
@@ -191,434 +135,220 @@ export class WattpilotCard extends LitElement {
     if (this._mainLoop) {
       clearInterval(this._mainLoop);
       this._mainLoop = null;
-      this.renderLeds(); // Wyrenderuj stan spoczynkowy
+      this.renderLeds();
     }
   }
 
   private renderLeds(): void {
     if (!this._leds || this._leds.length === 0) return;
 
-    const statusId = this._getEntityId('entity_status');
-    const status = (statusId ? this.hass.states[statusId]?.state || '' : '').toLowerCase();
-    const mode = this._getEntityStateOrAttribute('entity_mode') || '';
-    const phases = this.getPhaseText();
+    const status = (this._getEntityStateOrAttribute('entity_status') || '').toLowerCase();
     const reason = this._getEntityStateOrAttribute('entity_reason') || '';
     const activeAmps = Math.min(32, this._currentAmps || 6);
 
-    // Reset
-    this._leds.forEach((l) => {
+    this._leds.forEach((l, idx) => {
       l.className = 'led';
-      l.style.opacity = '1';
-      l.style.animation = 'none';
+      l.style.opacity = '0.1'; // Domyślnie przyciemnione
+
+      if (this._isCharging) {
+        if (idx < activeAmps) {
+          l.classList.add('blue');
+          // Efekt "biegającego" punktu
+          l.style.opacity = (idx === this.animIdx) ? '1' : '0.4';
+        }
+      } else {
+        if (idx < activeAmps) {
+          l.style.opacity = '1';
+          if (reason === 'NotChargingBecauseFallbackAwattar') l.classList.add('blue-blink');
+          else if (status.includes('wait')) l.classList.add('yellow');
+          else if (status.includes('complete')) l.classList.add('green');
+          else l.classList.add('blue');
+        }
+      }
     });
-
-    if (!this._isCharging) {
-      if (mode === 'Eco' && this._leds[0]) this._leds[0].classList.add('white');
-      if (mode === 'Next Trip' && this._leds[1]) this._leds[1].classList.add('white');
-    }
-
-    if (this._isCharging) {
-      const count = phases === '1-Phase' ? 1 : 3;
-      const tailLength = 4;
-
-      for (let i = 0; i < count; i++) {
-        const pos = (this.animIdx + i * 10) % 32;
-        for (let t = 0; t < tailLength; t++) {
-          const tailPos = (pos - t + 32) % 32;
-          if (tailPos < activeAmps) {
-            const led = this._leds[tailPos];
-            if (!led) continue;
-            led.classList.add('blue', 'breathing');
-
-            if (t === 0) {
-              led.style.opacity = '1';
-            } else {
-              const tailOpacity = Math.max(0.1, 0.8 - (t / tailLength) * 0.7);
-              led.classList.add('fading');
-              led.style.opacity = tailOpacity.toString();
-            }
-          }
-        }
-      }
-    } else {
-      // Stan gotowości / spoczynku
-      for (let i = 0; i < activeAmps; i++) {
-        const led = this._leds[i];
-        if (!led) continue;
-
-        if (reason === 'NotChargingBecauseFallbackAwattar') {
-          led.classList.add('blue-blink');
-        } else if (status.includes('wait car')) {
-          led.classList.add('yellow');
-        } else if (
-          status.includes('complete') &&
-          ['ChargingBecausePvSurplus', 'ChargingBecauseForceStateOn', 'ChargingBecauseFallbackDefault'].includes(reason)
-        ) {
-          led.classList.add('green');
-        } else {
-          led.classList.add('blue');
-        }
-      }
-    }
   }
 
-  // --- METODY POMOCNICZE DLA RENDERERA ---
-
-  private getPhaseText(): string {
-    const powerId = this._getEntityId('entity_power');
-    if (!powerId || !this.hass.states[powerId]) return "Auto";
-    
-    const attr = this.hass.states[powerId].attributes;
-    const activePhases = [
-      parseFloat(attr.L1_Ampere || 0),
-      parseFloat(attr.L2_Ampere || 0),
-      parseFloat(attr.L3_Ampere || 0)
-    ].filter(amp => amp > 0.3).length;
-
-    if (activePhases >= 3) return "3-Phases";
-    if (activePhases > 0) return "1-Phase";
-    return "Auto";
+  private _renderLedRing(): TemplateResult[] {
+    return Array.from({ length: 32 }).map((_, i) => {
+      const angle = (i / 32) * 360 - 90;
+      return html`
+        <div class="led" style="transform: rotate(${angle}deg) translate(26px) rotate(${-angle}deg)"></div>
+      `;
+    });
   }
 
-  private renderSideColumn(side: 'left' | 'right'): TemplateResult {
+  // --- RENDEROWANIE KOLUMN ---
+
+  private _renderSideColumn(side: 'left' | 'right'): TemplateResult {
     const rows = [];
     for (let i = 1; i <= 5; i++) {
-      const cfgKey = `${side}${i}`;
-      const cfg = this.config[cfgKey];
+      const cfg = this.config[`${side}${i}`];
       if (!cfg) continue;
 
       const entityId = typeof cfg === 'object' ? cfg.entity : cfg;
-      const stateObj = entityId ? this.hass.states[entityId] : undefined;
+      const stateObj = this.hass.states[entityId];
+      if (!stateObj) continue;
+
+      const val = (typeof cfg === 'object' && cfg.attribute) ? stateObj.attributes[cfg.attribute] : stateObj.state;
+      const icon = (typeof cfg === 'object' ? cfg.icon : undefined) || stateObj.attributes.icon || 'mdi:dots-horizontal';
       
-      if (stateObj) {
-        let val = (typeof cfg === 'object' && cfg.attribute) ? stateObj.attributes[cfg.attribute] : stateObj.state;
-        const numericVal = parseFloat(val);
-        if (!isNaN(numericVal) && val !== '' && val !== null) {
-          val = Math.round(numericVal);
-        }
-
-        const unit = (typeof cfg === 'object' ? cfg.unit : undefined) || stateObj.attributes.unit_of_measurement || '';
-        const icon = (typeof cfg === 'object' ? cfg.icon : undefined) || stateObj.attributes.icon || 'mdi:dots-horizontal';
-        
-        let iconColor = 'var(--primary-color)'; 
-        if (typeof cfg === 'object' && cfg.color_rules) {
-          if (typeof cfg.color_rules === 'string') {
-            iconColor = cfg.color_rules;
-          } else if (Array.isArray(cfg.color_rules)) {
-            const rules = [...cfg.color_rules].sort((a, b) => a.value - b.value);
-            for (const rule of rules) {
-              if (numericVal >= rule.value) iconColor = rule.color;
-            }
-          }
-        }
-
-        rows.push(html`
-          <div class="data-row" id="row-${side}-${i}">
-            <ha-icon icon="${icon}" style="color: ${iconColor}"></ha-icon>
-            <span>${val}${unit}</span>
-          </div>
-        `);
-      }
+      rows.push(html`
+        <div class="data-row">
+          <ha-icon icon="${icon}"></ha-icon>
+          <span>${val}${stateObj.attributes.unit_of_measurement || ''}</span>
+        </div>
+      `);
     }
-    return html`<div id="${side}-col">${rows}</div>`;
+    return html`<div class="side-column">${rows}</div>`;
   }
 
   // --- GŁÓWNY RENDERER ---  
-protected render(): TemplateResult {
-  if (!this.hass || !this.config) return html``;
 
-  // Pobieranie podstawowych wartości z Home Assistant (zastąp nazwy zmiennych z configu swoimi)
-  const mode = this.hass.states[this.config.entity_mode]?.state || 'Default';
-  const soc = this.hass.states[this.config.entity_soc]?.state || '0';
-  const power = this.hass.states[this.config.entity_power]?.state || '0.0';
-  const stateVal = this.hass.states[this.config.entity_status]?.state || '--';
-  const reasonVal = this.hass.states[this.config.entity_reason]?.state || 'Fronius WattPilot';
+  protected render(): TemplateResult {
+    if (!this.hass || !this.config) return html``;
 
-  return html`
-    <ha-card>
-      <div class="card-header">
-        <span class="reason-badge">${reasonVal}</span>
-        <span class="status-badge">${stateVal}</span>
-      </div>
+    const mode = this._getEntityStateOrAttribute('entity_mode') || 'Default';
+    const soc = this._parseNum(this._getEntityStateOrAttribute('entity_soc'));
+    const socMax = this._parseNum(this._getEntityStateOrAttribute('entity_target_soc'), 100);
+    const power = this._getEntityStateOrAttribute('entity_power') || '0.0';
+    const stateVal = this._getEntityStateOrAttribute('entity_status') || '--';
 
-      <div class="mode-row">
-        <div class="mode-btn ${mode === 'Default' ? 'active' : ''}" @click=${() => this._setMode('Default')}>
-          <ha-icon icon="mdi:flash"></ha-icon><span>Standard</span>
+    return html`
+      <ha-card>
+        <div class="card-header">
+          <span class="reason-badge">${this._getEntityStateOrAttribute('entity_reason') || 'Wattpilot'}</span>
+          <span class="status-badge">${stateVal}</span>
         </div>
-        <div class="mode-btn ${mode === 'Eco' ? 'active' : ''}" @click=${() => this._setMode('Eco')}>
-          <ha-icon icon="mdi:leaf"></ha-icon><span>Eco</span>
-        </div>
-        <div class="mode-btn ${mode === 'Next Trip' ? 'active' : ''}" @click=${() => this._setMode('Next Trip')}>
-          <ha-icon icon="mdi:map-marker-distance"></ha-icon><span>Next Trip</span>
-        </div>
-        <div class="action-stack">
-          <div class="action-btn force" @click=${() => this._callService('force_charge')}>FORCE</div>
-          <div class="action-btn start" @click=${() => this._callService('start_charge')}>START</div>
-          <div class="action-btn stop" @click=${() => this._callService('stop_charge')}>STOP</div>
-        </div>
-      </div>
 
-      <div class="card-content">
-        <div class="top-visuals">
-          <div class="side-column left">
-             ${this._renderSideColumn('left')}
+        <div class="mode-row">
+          <div class="mode-btn ${mode === 'Default' ? 'active' : ''}" @click=${() => this._setMode('Default')}>
+            <ha-icon icon="mdi:flash"></ha-icon><span>Standard</span>
           </div>
-          
-          <div class="led-wrapper">
-            <div id="led-ring">
-              ${this._renderLedRing()}
+          <div class="mode-btn ${mode === 'Eco' ? 'active' : ''}" @click=${() => this._setMode('Eco')}>
+            <ha-icon icon="mdi:leaf"></ha-icon><span>Eco</span>
+          </div>
+          <div class="mode-btn ${mode === 'Next Trip' ? 'active' : ''}" @click=${() => this._setMode('Next Trip')}>
+            <ha-icon icon="mdi:map-marker-distance"></ha-icon><span>Next Trip</span>
+          </div>
+          <div class="action-stack">
+            <div class="action-btn force" @click=${() => this._callService('force_charge')}>FORCE</div>
+            <div class="action-btn start" @click=${() => this._callService('start_charge')}>START</div>
+            <div class="action-btn stop" @click=${() => this._callService('stop_charge')}>STOP</div>
+          </div>
+        </div>
+
+        <div class="card-content">
+          <div class="top-visuals">
+            ${this._renderSideColumn('left')}
+            
+            <div class="led-wrapper">
+              <div id="led-ring">${this._renderLedRing()}</div>
+              <img src="${WATT_IMG}" class="device-img">
+              <div class="power-overlay">${power} kW</div>
             </div>
-            <img src="${WATT_IMG}" class="device-img">
+
+            ${this._renderSideColumn('right')}
           </div>
 
-          <div class="side-column right">
-             ${this._renderSideColumn('right')}
-          </div>
-        </div>
-
-        <div class="ev-stats">
-          <div class="top-line">
-            <div class="soc-box">
-              <ha-icon icon="mdi:battery"></ha-icon>
-              <span>${soc} %</span>
-            </div>
-            <div class="range-box">
-              <ha-icon icon="mdi:road-variant"></ha-icon>
-              <span>${this.hass.states[this.config.entity_range]?.state || '--'} km</span>
+          <div class="ev-stats">
+            <div class="progress-bar">
+              <div id="soc-bar" style="width: ${soc}%"></div>
+              <span class="soc-text-label">${soc} / ${socMax} %</span>
             </div>
           </div>
-          <div class="progress-bar">
-            <div id="soc-bar" style="width: ${soc}%"></div>
-          </div>
-          
-          <div class="charging-time">
-            ${this.hass.states[this.config.entity_charge_end]?.state || ''}
-          </div>
 
-          <div class="power-box">
-            <span id="power">${power} kW</span>
-            <span id="power-details">
-              <span id="amp-val">${this.hass.states[this.config.entity_current]?.state || '0'} A</span> 
-              <span id="session-energy" style="margin-left: 10px;">${this.hass.states[this.config.entity_energy]?.state || '0'} kWh</span>
-              <span id="phase-info" style="margin-left: 10px;">${this.hass.states[this.config.entity_phases]?.state || '--'}</span>
-            </span>
-          </div>
-
-          <div id="settings-panel" class="sub-panel ${this._activePanel === 'settings' ? '' : 'hidden'}">
+          <div class="sub-panel ${this._activePanel === 'settings' ? '' : 'hidden'}">
             <div class="section-title">SYSTEM SETTINGS</div>
-            <div class="control-row">
-              <span>Lock Level</span>
-              <select class="native-select" .value=${this.hass.states[this.config.entity_lock]?.state} @change=${(e: any) => this._updateSelect(this.config.entity_lock, e.target.value)}>
-                <option value="unlocked">Unlocked</option>
-                <option value="locked">Locked</option>
-              </select>
-            </div>
-            <div class="divider"></div>
-            <button @click=${() => this._callService('restart')} style="width:100%; padding:8px; border-radius:4px; border:1px solid #ef4444; background:transparent; color:#ef4444; cursor:pointer; font-weight:bold; margin-top:5px;">RESTART WATTPILOT</button>
-          </div>
-
-          <div id="wifi-panel" class="sub-panel ${this._activePanel === 'wifi' ? '' : 'hidden'}">
-            <div class="section-title">WIFI CONFIGURATION</div>
-            <div class="control-row"><span class="control-label">Status</span><span class="val-txt">${this.hass.states[this.config.entity_wifi_status]?.state || '--'}</span></div>
-          </div>
-
-          <div id="info-panel" class="sub-panel ${this._activePanel === 'info' ? '' : 'hidden'}">
-            <div class="section-title">CHARGER INFO</div>
-            <div class="control-row">
-              <span class="control-label">Total Charged</span>
-              <span class="val-txt">${this.hass.states[this.config.entity_total_energy]?.state || '--'} kWh</span>
-            </div>
-          </div>
-
-          <div id="charge-settings-panel" class="sub-panel ${this._activePanel === 'charge-settings' ? '' : 'hidden'}">
-            <div class="section-title">BATTERY & LIMITS</div>
-            <div class="control-row">
-              <span class="control-label">Target SoC</span>
-              <div class="right-controls">
-                <input type="range" min="0" max="100" 
-                       .value=${this.hass.states[this.config.entity_target_soc]?.state || '100'}
-                       @change=${(e: any) => this._updateNumber(this.config.entity_target_soc, e.target.value)}>
-                <span class="val-txt">${this.hass.states[this.config.entity_target_soc]?.state || '--'}%</span>
-              </div>
-            </div>
+            <button class="restart-btn" @click=${() => this._callService('restart')}>RESTART DEVICE</button>
           </div>
 
           <div class="divider"></div>
           
           <div class="section-header">
-            <div class="section-title" style="margin:0;">CHARGE CURRENT</div>
+            <div class="section-title">CHARGE CURRENT</div>
             <div class="header-actions">
-              <ha-icon icon="mdi:information-outline" class="sub-menu-trigger ${this._activePanel === 'info' ? 'active' : ''}" @click=${() => this._togglePanel('info')}></ha-icon>
-              <ha-icon icon="mdi:wifi-cog" class="sub-menu-trigger ${this._activePanel === 'wifi' ? 'active' : ''}" @click=${() => this._togglePanel('wifi')}></ha-icon>
-              <ha-icon icon="mdi:battery-charging-60" class="sub-menu-trigger ${this._activePanel === 'charge-settings' ? 'active' : ''}" @click=${() => this._togglePanel('charge-settings')}></ha-icon>
-              <ha-icon icon="mdi:cog" class="sub-menu-trigger ${this._activePanel === 'settings' ? 'active' : ''}" @click=${() => this._togglePanel('settings')}></ha-icon>
+              <ha-icon icon="mdi:cog" class="sub-menu-trigger" @click=${() => this._togglePanel('settings')}></ha-icon>
             </div>
           </div>
 
-          <div class="control-row" style="margin-top: 10px;">
-            <span class="control-label">Max Current</span>
-            <div class="right-controls">
-              <input type="range" min="6" max="32" 
-                     .value=${this.hass.states[this.config.entity_max_current]?.state || '16'}
-                     @change=${(e: any) => this._updateNumber(this.config.entity_max_current, e.target.value)}>
-              <span style="width: 40px; text-align: right; font-weight:bold;">${this.hass.states[this.config.entity_max_current]?.state || '--'} A</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </ha-card>
-    `;
-    
-    const powerId = this._getEntityId('entity_power');
-    const pEnt = powerId ? this.hass.states[powerId] : undefined;
-    const powerVal = pEnt && !isNaN(parseFloat(pEnt.state)) ? `${parseFloat(pEnt.state).toFixed(1)} kW` : '-- kW';
-    
-    const soc = this._parseNum(this._getEntityStateOrAttribute('entity_soc'));
-    const socMaxRaw = this._getEntityStateOrAttribute('entity_soc_max') || this._getEntityStateOrAttribute('entity_target_soc') || 100;
-    const socMax = this._parseNum(socMaxRaw, 100);
-    const socPercent = Math.max(0, Math.min(100, soc));
-
-    const currentMode = this._getEntityStateOrAttribute('entity_mode');
-
-    const sliderPct = ((this._currentAmps - 6) / (32 - 6)) * 100;
-
-    return html`
-      <ha-card>
-        <div class="card-content">
-          <div class="columns-container">
-            ${this.renderSideColumn('left')}
-            
-            <div class="center-col">
-              <div id="led-ring">
-                ${Array.from({ length: 32 }).map((_, i) => {
-                  const angle = (i / 32) * 360 - 90;
-                  return html`
-                    <div class="led" style="transform: rotate(${angle}deg) translate(26px) rotate(${-angle}deg)"></div>
-                  `;
-                })}
-              </div>
-              
-              <div class="power-display">${powerVal}</div>
-            </div>
-
-            ${this.renderSideColumn('right')}
-          </div>
-
-          <div class="soc-container">
-            <div id="soc-bar" 
-                 class=${classMap({ 'charging-anim': this._isCharging })}
-                 style="width: ${socPercent}%">
-            </div>
-            <span id="soc-text">${soc}/${socMax} %</span>
-          </div>
-
-          <div class="slider-container">
-            <input type="range" 
-                   id="slider-current" 
-                   min="6" max="32" step="1" 
-                   .value=${this._currentAmps.toString()}
-                   style="--v: ${sliderPct}%"
+          <div class="control-row">
+            <input type="range" min="6" max="32" 
+                   .value=${this._currentAmps}
                    @input=${this.handleSliderInput}
-                   @change=${this.handleSliderChange} />
-            <span id="curr-val-txt">${this._currentAmps} A</span>
+                   @change=${this.handleSliderChange}>
+            <span class="amp-label">${this._currentAmps} A</span>
           </div>
-
-          <div class="controls">
-            ${!this._isCharging ? html`
-              <button id="btn-start" @click=${() => this.handleServiceCall('button', 'press', 'entity_start')}>
-                Start
-              </button>
-            ` : html`
-              <button id="btn-stop" @click=${() => this.handleServiceCall('button', 'press', 'entity_stop')}>
-                Stop
-              </button>
-            `}
-          </div>
-
-          <div class="modes">
-            <button class="mode-btn ${classMap({ active: currentMode === 'Eco' })}"
-                    @click=${() => this.handleServiceCall('select', 'select_option', 'entity_mode', 'option', 'Eco')}>
-              Eco
-            </button>
-            <button class="mode-btn ${classMap({ active: currentMode === 'Next Trip' })}"
-                    @click=${() => this.handleServiceCall('select', 'select_option', 'entity_mode', 'option', 'Next Trip')}>
-              Next Trip
-            </button>
-          </div>
-          
         </div>
       </ha-card>
     `;
   }
 
+  // --- HANDLERY I AKCJE ---
+
+  private _togglePanel(panel: string) {
+    this._activePanel = this._activePanel === panel ? '' : panel;
+  }
+
+  private _setMode(mode: string) {
+    const eid = this._getEntityId('entity_mode');
+    if (eid) this.hass.callService('select', 'select_option', { entity_id: eid, option: mode });
+  }
+
+  private _callService(action: string) {
+    let domain = 'button', service = 'press', entity = '';
+    if (action === 'start_charge') entity = this._getEntityId('entity_start') || '';
+    if (action === 'stop_charge') entity = this._getEntityId('entity_stop') || '';
+    if (action === 'force_charge') entity = this._getEntityId('entity_force') || '';
+    if (action === 'restart') entity = this._getEntityId('entity_restart') || '';
+    if (entity) this.hass.callService(domain, service, { entity_id: entity });
+  }
+
+  private handleSliderInput(e: any) {
+    this._isInteractingC = true;
+    this._currentAmps = parseInt(e.target.value);
+    this.renderLeds();
+  }
+
+  private handleSliderChange(e: any) {
+    const val = parseInt(e.target.value);
+    const eid = this._getEntityId('entity_current');
+    if (eid) {
+      this.hass.callService('number', 'set_value', { entity_id: eid, value: val });
+    }
+    setTimeout(() => { this._isInteractingC = false; }, 1500);
+  }
+
   static styles = [
     cardStyles,
     css`
-      /* Tutaj możesz dodać specyficzne style tylko dla LitElement, np ukrywanie nieaktywnych paneli */
       .hidden { display: none !important; }
+      .power-overlay {
+        position: absolute;
+        bottom: -15px;
+        width: 100%;
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.1em;
+      }
+      .restart-btn {
+        width: 100%;
+        padding: 8px;
+        color: #ef4444;
+        background: transparent;
+        border: 1px solid #ef4444;
+        cursor: pointer;
+        font-weight: bold;
+      }
     `
   ];
 
-  // 1. Przełączanie paneli (Settings / Wifi itp.)
-  private _togglePanel(panelName: string) {
-    // Jeśli kliknięty panel jest już otwarty, zamknij go. W przeciwnym razie otwórz.
-    this._activePanel = this._activePanel === panelName ? '' : panelName;
-  }
-  
-  // 2. Obsługa zmiany trybów pracy (Eco, Default itp.)
-  private _setMode(mode: string) {
-    if (!this.config.entity_mode) return;
-    this.hass.callService('select', 'select_option', {
-      entity_id: this.config.entity_mode,
-      option: mode
-    });
-  }
-  
-  // 3. Proste wywołania akcji (Start, Stop, Restart)
-  private _callService(action: string) {
-    // Dostosuj domeny i serwisy do swojej integracji Fronius
-    let domain = 'button';
-    let service = 'press';
-    let entity = '';
-  
-    if (action === 'start_charge') entity = this.config.entity_start;
-    if (action === 'stop_charge') entity = this.config.entity_stop;
-    if (action === 'force_charge') entity = this.config.entity_force;
-    if (action === 'restart') entity = this.config.entity_restart;
-  
-    if (entity) {
-      this.hass.callService(domain, service, { entity_id: entity });
-    }
-  }
-  
-  // 4. Obsługa suwaków (sliderów)
-  private _updateNumber(entityId: string, value: string) {
-    if (!entityId) return;
-    this.hass.callService('number', 'set_value', {
-      entity_id: entityId,
-      value: Number(value)
-    });
-  }
-  
-  // 5. Obsługa list rozwijanych (select)
-  private _updateSelect(entityId: string, value: string) {
-    if (!entityId) return;
-    this.hass.callService('select', 'select_option', {
-      entity_id: entityId,
-      option: value
-    });
-  }
-  
-  getCardSize() {
-    return 3;
-  }
+  getCardSize() { return 4; }
 }
 
-// Rejestracja w Home Assistant
 (window as any).customCards = (window as any).customCards || [];
 (window as any).customCards.push({
   type: 'wattpilot-card',
   name: 'Wattpilot Card',
   preview: true,
-  description: 'A custom card for Fronius Wattpilot charger',
+  description: 'Custom card for Fronius Wattpilot',
 });
