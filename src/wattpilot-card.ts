@@ -378,16 +378,19 @@ class WattpilotCard extends HTMLElement {
     `;
   }
 
-  private createLedRing() {
-    const ring = this.shadowRoot?.querySelector('#led-ring');
+private createLedRing() {
+    const ring = this._getEl<HTMLElement>('#led-ring');
     if (!ring) return;
     ring.innerHTML = '';
+    this._leds = [];
+    
     for (let i = 0; i < 32; i++) {
       const led = document.createElement('div');
       led.className = 'led';
       const angle = (i / 32) * 360 - 90;
       led.style.transform = `rotate(${angle}deg) translate(26px) rotate(${-angle}deg)`;
       ring.appendChild(led);
+      this._leds.push(led); // Zapisujemy referencje na stałe
     }
   }
 
@@ -400,11 +403,9 @@ class WattpilotCard extends HTMLElement {
   }
 
   private renderLeds(): void {
-    if (!this.shadowRoot) return;
-    const leds = this.shadowRoot.querySelectorAll<HTMLElement>('.led');
-    if (leds.length === 0) return;
+    if (this._leds.length === 0) return;
 
-    leds.forEach((l) => {
+    this._leds.forEach((l) => {
       l.className = 'led';
       l.style.opacity = '1';
       l.style.animation = 'none';
@@ -414,8 +415,8 @@ class WattpilotCard extends HTMLElement {
     const activeAmps = Math.min(32, this._currentAmps || 6);
 
     if (!status.includes('charging')) {
-      if (this._currentMode === 'Eco' && leds[0]) leds[0].classList.add('white');
-      if (this._currentMode === 'Next Trip' && leds[1]) leds[1].classList.add('white');
+      if (this._currentMode === 'Eco' && this._leds[0]) this._leds[0].classList.add('white');
+      if (this._currentMode === 'Next Trip' && this._leds[1]) this._leds[1].classList.add('white');
     }
 
     if (status.includes('charging')) {
@@ -427,7 +428,7 @@ class WattpilotCard extends HTMLElement {
         for (let t = 0; t < tailLength; t++) {
           const tailPos = (pos - t + 32) % 32;
           if (tailPos < activeAmps) {
-            const led = leds[tailPos];
+            const led = this._leds[tailPos];
             led.classList.add('blue', 'breathing');
 
             if (t === 0) {
@@ -442,7 +443,7 @@ class WattpilotCard extends HTMLElement {
       }
     } else {
       for (let i = 0; i < activeAmps; i++) {
-        const led = leds[i];
+        const led = this._leds[i];
         if (!led) continue;
 
         if (this._currentReason === 'NotChargingBecauseFallbackAwattar') {
@@ -464,10 +465,8 @@ class WattpilotCard extends HTMLElement {
   }
 
   private updateWhiteSlider(val: number): void {
-    if (!this.shadowRoot) return;
-
-    const slider = this.shadowRoot.querySelector('#slider-current') as HTMLElement;
-    const textLabel = this.shadowRoot.querySelector('#curr-val-txt') as HTMLElement;
+    const slider = this._getEl<HTMLElement>('#slider-current');
+    const textLabel = this._getEl<HTMLElement>('#curr-val-txt');
 
     if (slider) {
       const pct = ((val - 6) / (32 - 6)) * 100;
@@ -480,27 +479,28 @@ class WattpilotCard extends HTMLElement {
     if (textLabel) textLabel.innerText = `${val} A`;
   }
   
-  private startAnimationLoop() {
-    if (this._mainLoop) return;
-    this._mainLoop = setInterval(() => {
-      const status = (this._hass.states[this.config.entity_status]?.state || '').toLowerCase();
-      if (status.includes('charging')) {
+  private toggleAnimationLoop(isCharging: boolean) {
+    if (isCharging && !this._mainLoop) {
+      this._mainLoop = setInterval(() => {
         this.animIdx = (this.animIdx + 1) % 32;
         this.renderLeds();
-      }
-    }, 100);
+      }, 100);
+    } else if (!isCharging && this._mainLoop) {
+      clearInterval(this._mainLoop);
+      this._mainLoop = null;
+      this.renderLeds();
+    }
   }
 
-private renderSideColumn(side: 'left' | 'right'): void {
-    if (!this.shadowRoot) return;
-    const col = this.shadowRoot.querySelector(`#${side}-col`);
+  private renderSideColumn(side: 'left' | 'right'): void {
+    const col = this._getEl<HTMLElement>(`#${side}-col`);
     if (!col) return;
 
     col.innerHTML = '';
     
     for (let i = 1; i <= 5; i++) {
       const cfg = this.config[`${side}${i}`];
-      if (cfg) { // Wystarczy, że istnieje klucz konfiguracji
+      if (cfg) {
         const row = document.createElement('div');
         row.className = 'data-row';
         row.id = `row-${side}-${i}`;
@@ -514,7 +514,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
   }
 
   private updateSideColumn(side: 'left' | 'right'): void {
-    if (!this.shadowRoot || !this._hass) return;
+    if (!this._hass) return;
 
     for (let i = 1; i <= 5; i++) {
       const cfg = this.config[`${side}${i}`];
@@ -536,8 +536,8 @@ private renderSideColumn(side: 'left' | 'right'): void {
       const unit = (typeof cfg === 'object' ? cfg.unit : undefined) || stateObj.attributes.unit_of_measurement || '';
       const icon = (typeof cfg === 'object' ? cfg.icon : undefined) || stateObj.attributes.icon || 'mdi:dots-horizontal';
       
-      const valEl = this.shadowRoot.querySelector(`#val-${side}-${i}`) as HTMLElement;
-      const iconEl = this.shadowRoot.querySelector(`#icon-${side}-${i}`) as any;
+      const valEl = this._getEl<HTMLElement>(`#val-${side}-${i}`);
+      const iconEl = this._getEl<HTMLElement>(`#icon-${side}-${i}`) as any;
 
       if (valEl) valEl.innerText = `${val}${unit}`;
 
@@ -561,8 +561,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
   }
 
   private bindUIElement(selector: string, domain: string, service: string, valueKey: string = 'value'): void {
-    if (!this.shadowRoot) return;
-    const el = this.shadowRoot.querySelector(selector) as any;
+    const el = this._getEl<HTMLElement>(selector) as any;
     if (!el) return;
 
     const isTime = el.dataset.istime === 'true';
@@ -574,7 +573,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
 
     if (el.tagName === 'INPUT') {
       el.addEventListener('input', (e: any) => {
-        const txtEl = this.shadowRoot?.querySelector(`${selector}-txt`) as HTMLElement;
+        const txtEl = this._getEl<HTMLElement>(`${selector}-txt`);
         if (txtEl) {
           let suffix = isTime ? 'm' : isPower ? 'kW' : isPrice ? '€' : selector.includes('lvl') ? 'A' : '%';
           txtEl.innerText = `${e.target.value}${suffix}`;
@@ -612,8 +611,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
   }
 
   private updateUIElement(selector: string, states: any): void {
-    if (!this.shadowRoot) return;
-    const el = this.shadowRoot.querySelector(selector) as any;
+    const el = this._getEl<HTMLElement>(selector) as any;
     if (!el) return;
     
     const confKey = el.dataset.entity;
@@ -639,12 +637,12 @@ private renderSideColumn(side: 'left' | 'right'): void {
       el.innerText = isUpdate ? "Update Available" : "No Update";
       el.style.color = isUpdate ? "#4caf50" : "inherit";
 
-      const vTxt = this.shadowRoot.querySelector('#firmware-version-txt') as HTMLElement;
+      const vTxt = this._getEl<HTMLElement>('#firmware-version-txt');
       if (vTxt) vTxt.innerText = `${entity.attributes.installed_version || '--'} / ${entity.attributes.latest_version || '--'}`;
 
-      const btn = this.shadowRoot.querySelector('#btn-install-update') as HTMLElement;
-      const progCont = this.shadowRoot.querySelector('#update-progress-container') as HTMLElement;
-      const progBar = this.shadowRoot.querySelector('#update-progress-bar') as HTMLElement;
+      const btn = this._getEl<HTMLElement>('#btn-install-update');
+      const progCont = this._getEl<HTMLElement>('#update-progress-container');
+      const progBar = this._getEl<HTMLElement>('#update-progress-bar');
 
       if (inProgress && pct !== null) {
         if (progCont) progCont.style.display = 'block';
@@ -696,7 +694,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
 
       el.value = displayVal;
 
-      const txtEl = this.shadowRoot.querySelector(`${selector}-txt`) as HTMLElement;
+      const txtEl = this._getEl<HTMLElement>(`${selector}-txt`);
       if (txtEl) {
         let suffix = isTime ? 'm' : isPower ? 'kW' : isPrice ? '€' : selector.includes('lvl') ? 'A' : '%';
         txtEl.innerText = `${displayVal}${suffix}`;
@@ -715,25 +713,25 @@ private renderSideColumn(side: 'left' | 'right'): void {
       };
     });
 
-    const btnStart = root.querySelector('#btn-start') as HTMLElement;
+    const btnStart = this._getEl<HTMLElement>('#btn-start');
     if (btnStart) btnStart.onclick = () => {
         const startId = this._getEntityId('entity_start');
         if (startId) this._hass.callService('button', 'press', { entity_id: startId });
     };
     
-    const btnStop = root.querySelector('#btn-stop') as HTMLElement;
+    const btnStop = this._getEl<HTMLElement>('#btn-stop');
     if (btnStop) btnStop.onclick = () => {
         const stopId = this._getEntityId('entity_stop');
         if (stopId) this._hass.callService('button', 'press', { entity_id: stopId });
     };
     
-    const btnForce = root.querySelector('#btn-force') as HTMLElement;
+    const btnForce = this._getEl<HTMLElement>('#btn-force');
     if (btnForce) btnForce.onclick = () => {
         const forceId = this._getEntityId('entity_force');
         if (forceId) this._hass.callService('button', 'press', { entity_id: forceId });
     };
     
-    const btnRestart = root.querySelector('#btn-restart') as HTMLElement;
+    const btnRestart = this._getEl<HTMLElement>('#btn-restart');
     if (btnRestart) {
       btnRestart.onclick = () => {
         const restartId = this._getEntityId('entity_restart');
@@ -743,7 +741,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
       };
     }
 
-    const installBtn = root.querySelector('#btn-install-update') as HTMLButtonElement;
+    const installBtn = this._getEl<HTMLButtonElement>('#btn-install-update');
     if (installBtn) {
       installBtn.addEventListener('click', () => {
         const entityId = this._getEntityId('entity_firmware_update');
@@ -755,7 +753,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
       });
     }
 
-    const currSlider = root.querySelector('#slider-current') as HTMLInputElement;
+    const currSlider = this._getEl<HTMLInputElement>('#slider-current');
     if (currSlider) {
       currSlider.oninput = (e: any) => {
         const val = parseInt(e.target.value);
@@ -823,17 +821,19 @@ private renderSideColumn(side: 'left' | 'right'): void {
   }
 
   private updateData(): void {
-    if (!this._hass || !this.config || !this.shadowRoot) return;
+    if (!this._hass || !this.config) return;
     const states = this._hass.states;
 
     const statusId = this._getEntityId('entity_status');
     const status = statusId ? (states[statusId]?.state || 'Unknown') : 'Unknown';
     
     const chargingId = this._getEntityId('entity_charging');
-    const isCharging = (chargingId && states[chargingId]?.state === 'on') || 
+    this._isCharging = (chargingId && states[chargingId]?.state === 'on') || 
                        status.toLowerCase().includes('charging');
 
-    const leftCol = this.shadowRoot.querySelector('#left-col');
+    this.toggleAnimationLoop(this._isCharging);
+
+    const leftCol = this._getEl<HTMLElement>('#left-col');
     if (leftCol && leftCol.innerHTML === '') {
       this.renderSideColumn('left');
       this.renderSideColumn('right');
@@ -848,7 +848,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
 
     if (pEnt) {
       const attr = pEnt.attributes;
-      const powerEl = this.shadowRoot.querySelector('#power') as HTMLElement;
+      const powerEl = this._getEl<HTMLElement>('#power');
       if (powerEl && !isNaN(parseFloat(pEnt.state))) {
           powerEl.innerText = `${parseFloat(pEnt.state).toFixed(1)} kW`;
       }
@@ -862,39 +862,37 @@ private renderSideColumn(side: 'left' | 'right'): void {
       if (activePhases >= 3) phaseText = "3-Phases";
       else if (activePhases > 0) phaseText = "1-Phase";
 
-      const sessionEnergyEl = this.shadowRoot.querySelector('#session-energy') as HTMLElement;
+      const sessionEnergyEl = this._getEl<HTMLElement>('#session-energy');
       const sessionEnergyVal = this._getEntityStateOrAttribute('entity_session_energy');
       if (sessionEnergyEl && sessionEnergyVal !== undefined) {
         sessionEnergyEl.innerText = `${parseFloat(sessionEnergyVal as string).toFixed(1)} kWh`;
       }
 
-      const ampVal = this.shadowRoot.querySelector('#amp-val') as HTMLElement;
-      const phaseInfo = this.shadowRoot.querySelector('#phase-info') as HTMLElement;
+      const ampVal = this._getEl<HTMLElement>('#amp-val');
+      const phaseInfo = this._getEl<HTMLElement>('#phase-info');
       if (ampVal) ampVal.innerText = `${totalA_text} A`;
       if (phaseInfo) phaseInfo.innerText = phaseText;
     }
 
-    const socRaw = this._getEntityStateOrAttribute('entity_soc') || 0;
+    const soc = this._parseNum(this._getEntityStateOrAttribute('entity_soc'));
     const socMaxRaw = this._getEntityStateOrAttribute('entity_soc_max') || 
                       this._getEntityStateOrAttribute('entity_target_soc') || 100;
-    
-    const soc = Math.round(parseFloat(socRaw as string));
-    const socMax = Math.round(parseFloat(socMaxRaw as string));
+    const socMax = this._parseNum(socMaxRaw, 100);
 
-    const socTextEl = this.shadowRoot.querySelector('#soc-text') as HTMLElement;
+    const socTextEl = this._getEl<HTMLElement>('#soc-text');
     if (socTextEl) socTextEl.innerText = `${soc}/${socMax} %`;
 
-    const socBar = this.shadowRoot.querySelector('#soc-bar') as HTMLElement;
-    const socIcon = this.shadowRoot.querySelector('#soc-icon') as any;
+    const socBar = this._getEl<HTMLElement>('#soc-bar');
+    const socIcon = this._getEl<HTMLElement>('#soc-icon') as any;
 
     if (socBar && socIcon) {
       const s = Math.max(0, Math.min(100, soc));
       socBar.style.width = `${s}%`;
 
       let batLevel = Math.round(s / 10) * 10;
-      let iconStr = isCharging ? 'mdi:battery-charging' : 'mdi:battery';
-      if (s >= 100) iconStr = isCharging ? 'mdi:battery-charging-100' : 'mdi:battery';
-      else if (s <= 5) iconStr = isCharging ? 'mdi:battery-charging-outline' : 'mdi:battery-outline';
+      let iconStr = this._isCharging ? 'mdi:battery-charging' : 'mdi:battery';
+      if (s >= 100) iconStr = this._isCharging ? 'mdi:battery-charging-100' : 'mdi:battery';
+      else if (s <= 5) iconStr = this._isCharging ? 'mdi:battery-charging-outline' : 'mdi:battery-outline';
       else iconStr += `-${batLevel}`;
       socIcon.setAttribute('icon', iconStr);
 
@@ -915,7 +913,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
       const staticGradient = `linear-gradient(90deg, #ef4444 0%, ${dynamicColor} 100%)`;
       const stripes = `linear-gradient(-45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent)`;
 
-      if (isCharging) {
+      if (this._isCharging) {
         socBar.classList.add('charging-anim');
         socBar.style.background = `${stripes}, ${staticGradient}`;
         socBar.style.backgroundSize = `30px 30px, 100% 100%`;
@@ -927,9 +925,9 @@ private renderSideColumn(side: 'left' | 'right'): void {
     }
 
     const chargeEndStateVal = this._getEntityStateOrAttribute('entity_charge_end');
-    const chargeEndEl = this.shadowRoot.querySelector('#charge-end-text') as HTMLElement;
+    const chargeEndEl = this._getEl<HTMLElement>('#charge-end-text');
     if (chargeEndEl) {
-      if (isCharging && chargeEndStateVal && !['unknown', 'unavailable'].includes(chargeEndStateVal.toString())) {
+      if (this._isCharging && chargeEndStateVal && !['unknown', 'unavailable'].includes(chargeEndStateVal.toString())) {
         try {
           const endDate = new Date(chargeEndStateVal);
           const diffMs = endDate.getTime() - new Date().getTime();
@@ -947,18 +945,17 @@ private renderSideColumn(side: 'left' | 'right'): void {
     if (currEnt && !this._isInteractingC) {
       const curr = parseInt(currEnt.state, 10) || 6;
       this._currentAmps = curr;
-      const slider = this.shadowRoot.querySelector('#slider-current') as HTMLInputElement;
+      const slider = this._getEl<HTMLInputElement>('#slider-current');
       if (slider) slider.value = curr.toString();
       this.updateWhiteSlider(curr);
     }
 
     const rangeRaw = this._getEntityStateOrAttribute('entity_range');
     if (rangeRaw !== undefined) {
-      const range = Math.round(parseFloat(rangeRaw as string));
+      const range = this._parseNum(rangeRaw);
       let rangeMaxRaw = this._getEntityStateOrAttribute('entity_max_range');
       
       if (rangeMaxRaw === undefined) {
-         // Fallback do atrybutu maxrange z encji range
          const rangeId = this._getEntityId('entity_range');
          if (rangeId && states[rangeId] && states[rangeId].attributes.maxrange) {
              rangeMaxRaw = states[rangeId].attributes.maxrange;
@@ -966,21 +963,21 @@ private renderSideColumn(side: 'left' | 'right'): void {
              rangeMaxRaw = 0;
          }
       }
-      const rangeMax = Math.round(parseFloat(rangeMaxRaw as string));
-      const rangeTextEl = this.shadowRoot.querySelector('#range-text') as HTMLElement;
+      const rangeMax = this._parseNum(rangeMaxRaw);
+      const rangeTextEl = this._getEl<HTMLElement>('#range-text');
       if (rangeTextEl) rangeTextEl.innerText = `${range}/${rangeMax} km`;
     }
 
     const reasonRaw = this._getEntityStateOrAttribute('entity_reason');
     const reasonText = reasonRaw !== undefined ? reasonRaw : "Fronius Wattpilot";
-    const reasonBadge = this.shadowRoot.querySelector('#reason-badge') as HTMLElement;
+    const reasonBadge = this._getEl<HTMLElement>('#reason-badge');
     if (reasonBadge) reasonBadge.innerText = reasonText;
 
-    const statusBadge = this.shadowRoot.querySelector('#status-badge') as HTMLElement;
+    const statusBadge = this._getEl<HTMLElement>('#status-badge');
     if (statusBadge) {
       statusBadge.innerText = status;
       const energyRaw = this._getEntityStateOrAttribute('entity_energy');
-      if (isCharging && energyRaw !== undefined) {
+      if (this._isCharging && energyRaw !== undefined) {
         const color = parseFloat(energyRaw as string) >= 0 ? '#22c55e' : '#ef4444';
         statusBadge.style.borderColor = color;
         statusBadge.style.color = color;
@@ -993,16 +990,16 @@ private renderSideColumn(side: 'left' | 'right'): void {
       }
     }
 
-    this.shadowRoot.querySelector('#btn-start')?.classList.toggle('hidden', isCharging);
-    this.shadowRoot.querySelector('#btn-stop')?.classList.toggle('hidden', !isCharging);
+    this._getEl<HTMLElement>('#btn-start')?.classList.toggle('hidden', this._isCharging);
+    this._getEl<HTMLElement>('#btn-stop')?.classList.toggle('hidden', !this._isCharging);
 
     const modeRaw = this._getEntityStateOrAttribute('entity_mode');
-    this.shadowRoot.querySelectorAll('.mode-btn').forEach(b => 
+    this.shadowRoot?.querySelectorAll('.mode-btn').forEach(b => 
       (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.val === modeRaw)
     );
 
     const pModeRaw = this._getEntityStateOrAttribute('entity_phase');
-    this.shadowRoot.querySelectorAll('#phase-ctrl .phase-btn').forEach(b => 
+    this.shadowRoot?.querySelectorAll('#phase-ctrl .phase-btn').forEach(b => 
       (b as HTMLElement).classList.toggle('active', (b as HTMLElement).dataset.val === pModeRaw)
     );
 
@@ -1020,7 +1017,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
     uiElements.forEach(sel => this.updateUIElement(sel, states));
 
     const updateTxt = (id: string, val: string) => {
-      const el = this.shadowRoot?.querySelector(id) as HTMLElement;
+      const el = this._getEl<HTMLElement>(id);
       if (el) el.innerText = val;
     };
 
@@ -1030,7 +1027,7 @@ private renderSideColumn(side: 'left' | 'right'): void {
     updateTxt('#wifi-signal-txt', (wifiSig || '--') + ' dBm');
 
     const totalCharged = this._getEntityStateOrAttribute('entity_total_charged') || '0';
-    updateTxt('#total-charged-txt', `${Math.round(parseFloat(totalCharged as string))} kWh`);
+    updateTxt('#total-charged-txt', `${this._parseNum(totalCharged)} kWh`);
 
     if (pEnt && pEnt.attributes) {
       const attr = pEnt.attributes;
@@ -1042,14 +1039,14 @@ private renderSideColumn(side: 'left' | 'right'): void {
         return `<span class="phase-label">${prefix}:</span> ${p}W, ${v}V, ${a}A, ${r}%`;
       };
       
-      const l1 = this.shadowRoot.querySelector('#l1-line');
+      const l1 = this._getEl<HTMLElement>('#l1-line');
       if (l1) l1.innerHTML = formatPhase('L1');
-      const l2 = this.shadowRoot.querySelector('#l2-line');
+      const l2 = this._getEl<HTMLElement>('#l2-line');
       if (l2) l2.innerHTML = formatPhase('L2');
-      const l3 = this.shadowRoot.querySelector('#l3-line');
+      const l3 = this._getEl<HTMLElement>('#l3-line');
       if (l3) l3.innerHTML = formatPhase('L3');
       
-      const nLine = this.shadowRoot.querySelector('#n-line');
+      const nLine = this._getEl<HTMLElement>('#n-line');
       if (nLine) {
         const p = Math.round(parseFloat(attr.N_Power || 0));
         const v = parseFloat(attr.N_Voltage || 0).toFixed(1);
