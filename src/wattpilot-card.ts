@@ -16,8 +16,6 @@ export class WattpilotCard extends LitElement {
   @state() private _isInteracting: boolean = false;
   @state() private _animIdx: number = 0;
 
-  private _mainLoop: any = null;
-
   public setConfig(config: any) {
     this.config = config;
   }
@@ -32,51 +30,21 @@ export class WattpilotCard extends LitElement {
     return stateObj ? stateObj.state : undefined;
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    this._mainLoop = setInterval(() => {
-      const status = (this._getState('entity_status') || '').toLowerCase();
-      if (status.includes('charging')) {
-        this._animIdx = (this._animIdx + 1) % 32;
-        this._updateLeds();
-      }
-    }, 100);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    if (this._mainLoop) clearInterval(this._mainLoop);
-  }
-
-  @queryAll('.led') private _leds!: NodeListOf<HTMLElement>;
-
-  private _updateLeds() {
-    if (!this._leds?.length) return;
-    const activeLimit = Math.min(32, this._currentAmps);
-    this._leds.forEach((l, i) => {
-      l.style.opacity = i < activeLimit ? (this._isCharging && i === this._animIdx ? '1' : '0.4') : '0.1';
-    });
-  }
-
+  // --- RENDEROWANIE KOLUMN BOCZNYCH ---
   private _renderSideColumn(side: 'left' | 'right'): TemplateResult {
     const rows = [];
     for (let i = 1; i <= 5; i++) {
       const cfg = this.config[`${side}${i}`];
       if (!cfg) continue;
-      
-      const eid = typeof cfg === 'object' ? cfg.entity : cfg;
-      const stateObj = this.hass.states[eid];
+      const stateObj = this.hass.states[typeof cfg === 'object' ? cfg.entity : cfg];
       if (!stateObj) continue;
-
-      const val = Math.round(parseFloat(stateObj.state)) || stateObj.state;
-      const unit = (typeof cfg === 'object' ? cfg.unit : undefined) || stateObj.attributes.unit_of_measurement || '';
-      const icon = cfg.icon || stateObj.attributes.icon;
-
+      const val = stateObj.state;
+      const unit = cfg.unit || stateObj.attributes.unit_of_measurement || '';
       rows.push(html`
         <div class="data-row ${side}">
           ${side === 'left' 
-            ? html`<ha-icon .icon=${icon}></ha-icon><span>${val}${unit}</span>` 
-            : html`<span>${val}${unit}</span><ha-icon .icon=${icon}></ha-icon>`}
+            ? html`<ha-icon .icon=${cfg.icon || stateObj.attributes.icon}></ha-icon><span>${val}${unit}</span>` 
+            : html`<span>${val}${unit}</span><ha-icon .icon=${cfg.icon || stateObj.attributes.icon}></ha-icon>`}
         </div>
       `);
     }
@@ -84,9 +52,14 @@ export class WattpilotCard extends LitElement {
   }
 
   protected render(): TemplateResult {
+    if (!this.hass || !this.config) return html``;
+
     const status = this._getState('entity_status') || '--';
     const mode = this._getState('entity_mode');
     const soc = this._getState('entity_soc') || '0';
+    const socTarget = this._getState('entity_target_soc') || '100';
+    const range = this._getState('entity_range') || '--';
+    const rangeTarget = this._getState('entity_range_target') || '--';
     const power = parseFloat(this._getState('entity_power') || '0').toFixed(1);
     const sessionEnergy = parseFloat(this._getState('entity_energy_session') || '0').toFixed(1);
     const phases = this._getState('entity_phases') || 'Auto';
@@ -126,24 +99,41 @@ export class WattpilotCard extends LitElement {
           ${this._renderSideColumn('left')}
           <div class="led-wrapper">
             <div id="led-ring">
-              ${Array.from({length:32}).map((_,i) => html`<div class="led" style="transform: rotate(${i*11.25-90}deg) translate(46px) translateY(18px)"></div>`)}
+              ${Array.from({length:32}).map((_,i) => html`
+                <div class="led" style="transform: rotate(${i*11.25-90}deg) translate(33px) translateY(24px)"></div>
+              `)}
             </div>
-            <img src="data:image/png;base64,..." class="device-img">
+            <img src="${WATT_IMG}" class="device-img">
           </div>
           ${this._renderSideColumn('right')}
         </div>
 
-        <div class="ev-stats">
+        <div class="soc-range-row">
+            <div class="stat-item"><ha-icon icon="mdi:battery-high"></ha-icon> ${soc}/${socTarget}%</div>
+            <div class="stat-item"><ha-icon icon="mdi:car-connected"></ha-icon> ${range}/${rangeTarget}km</div>
+        </div>
+
+        <div class="charging-progress-area">
           <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${soc}%"></div></div>
-          ${timeLeft && timeLeft !== '--' ? html`<div class="time-left-center">Pozostało: ${timeLeft}</div>` : ''}
-          
-          <div class="power-row-inline">
-            <span class="main-power">${power} kW</span>
-            <span class="sub-power">${this._currentAmps}A | ${sessionEnergy}kWh | ${phases}φ</span>
-          </div>
+          ${timeLeft && timeLeft !== '--' ? html`<div class="time-left-text">Pozostało: ${timeLeft}</div>` : ''}
+        </div>
+
+        <div class="power-row-inline">
+          <span class="main-power">${power} kW</span>
+          <span class="sub-power">${this._currentAmps}A | ${sessionEnergy}kWh | ${phases}φ</span>
         </div>
 
         <div class="settings-area">
+          <div class="settings-header">
+            <span>CHARGE CURRENT</span>
+            <div class="header-icons">
+              <ha-icon icon="mdi:information-outline"></ha-icon>
+              <ha-icon icon="mdi:wifi"></ha-icon>
+              <ha-icon icon="mdi:battery-charging"></ha-icon>
+              <ha-icon icon="mdi:cog"></ha-icon>
+            </div>
+          </div>
+
           <div class="phases-row">
             <span>Phases</span>
             <div class="chips">
@@ -152,6 +142,7 @@ export class WattpilotCard extends LitElement {
               <div class="chip ${phases === '3' ? 'active' : ''}" @click=${() => this._setPhases('3')}>3</div>
             </div>
           </div>
+
           <div class="slider-row">
             <input type="range" min="6" max="32" .value=${this._currentAmps.toString()} @input=${this._handleInput} @change=${this._handleChange}>
             <span class="amp-box">${this._currentAmps}A</span>
@@ -161,64 +152,90 @@ export class WattpilotCard extends LitElement {
     `;
   }
 
-  // Handlery (pominięte dla zwięzłości, zachowaj te z poprzedniej wersji)
-  private _setMode(m: string) { /* ... */ }
-  private _setPhases(p: string) { /* ... */ }
-  private _call(key: string) { /* ... */ }
+  // --- SERWISY ---
+  private _setMode(m: string) {
+    const eid = typeof this.config.entity_mode === 'object' ? this.config.entity_mode.entity : this.config.entity_mode;
+    this.hass.callService('select', 'select_option', { entity_id: eid, option: m });
+  }
+
+  private _setPhases(p: string) {
+    const eid = typeof this.config.entity_phases === 'object' ? this.config.entity_phases.entity : this.config.entity_phases;
+    this.hass.callService('select', 'select_option', { entity_id: eid, option: p });
+  }
+
+  private _call(key: string) {
+    const eid = this.config[key];
+    if (eid) this.hass.callService('button', 'press', { entity_id: eid });
+  }
+
   private _handleInput(e: any) { this._isInteracting = true; this._currentAmps = parseInt(e.target.value); }
-  private _handleChange(e: any) { /* ... */ }
+  private _handleChange(e: any) {
+    const eid = typeof this.config.entity_current === 'object' ? this.config.entity_current.entity : this.config.entity_current;
+    this.hass.callService('number', 'set_value', { entity_id: eid, value: e.target.value });
+    setTimeout(() => { this._isInteracting = false; }, 2000);
+  }
 
   static styles = css`
-    ha-card { padding: 8px 16px 16px 16px; background: #1c1c1c; color: white; border-radius: 12px; }
+    ha-card { padding: 4px 12px 12px 12px; background: #1c1c1c; color: white; border-radius: 12px; }
     
-    .card-header { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center; }
-    .reason-badge { border: 1px solid #333; padding: 2px 10px; border-radius: 15px; color: #777; font-size: 11px; }
-    .status-badge { border: 1px solid #03a9f4; color: #03a9f4; padding: 2px 10px; border-radius: 15px; font-weight: bold; font-size: 11px; }
+    .card-header { display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center; }
+    .reason-badge { border: 1px solid #333; padding: 1px 8px; border-radius: 12px; color: #666; font-size: 10px; }
+    .status-badge { border: 1px solid #03a9f4; color: #03a9f4; padding: 1px 8px; border-radius: 12px; font-weight: bold; font-size: 10px; }
 
-    .top-controls-grid { display: flex; gap: 10px; margin-bottom: 12px; align-items: stretch; }
-    .modes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; flex: 1; }
-    .actions-grid { display: flex; flex-direction: column; gap: 4px; width: 85px; justify-content: space-between; }
+    .top-controls-grid { display: flex; gap: 8px; margin-bottom: 8px; }
+    .modes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; flex: 1; }
+    .actions-grid { display: flex; flex-direction: column; gap: 4px; width: 80px; }
 
     .mode-btn { 
-      background: #262626; border-radius: 8px; display: flex; flex-direction: column; 
-      align-items: center; justify-content: center; padding: 4px; cursor: pointer; border: 1px solid transparent;
+      background: #262626; border-radius: 6px; display: flex; flex-direction: column; 
+      align-items: center; justify-content: center; padding: 2px; cursor: pointer; border: 1px solid transparent;
+      height: 48px; /* dopasowane do wysokości 2 przycisków akcji */
     }
     .mode-btn.active { border-color: #03a9f4; background: rgba(3,169,244,0.1); }
-    .mode-btn ha-icon { --mdc-icon-size: 20px; margin-bottom: 2px; }
-    .mode-btn span { font-size: 10px; }
+    .mode-btn ha-icon { --mdc-icon-size: 18px; }
+    .mode-btn span { font-size: 9px; margin-top: 2px; }
 
-    .action-btn { padding: 6px; border-radius: 6px; font-size: 10px; font-weight: bold; text-align: center; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; }
+    .action-btn { padding: 4px; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; }
     .force { background: #ff9800; color: black; }
     .start { background: #4caf50; color: black; }
-    .stop { background: #f44336; color: white; min-height: 50px; }
+    .stop { background: #f44336; color: white; height: 100%; }
 
-    .visual-center { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .side-column { display: flex; flex-direction: column; gap: 8px; min-width: 75px; }
-    .data-row { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #ccc; white-space: nowrap; }
+    .visual-center { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .side-column { display: flex; flex-direction: column; gap: 4px; min-width: 80px; }
+    .data-row { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #ccc; white-space: nowrap; }
     .data-row.right { justify-content: flex-end; }
-    .data-row ha-icon { --mdc-icon-size: 16px; color: #03a9f4; }
+    .data-row ha-icon { --mdc-icon-size: 14px; color: #03a9f4; }
 
-    .led-wrapper { position: relative; width: 120px; height: 130px; display: flex; justify-content: center; align-items: flex-start; padding-top: 10px; }
-    .device-img { width: 85px; z-index: 2; position: relative; }
+    .led-wrapper { position: relative; width: 110px; height: 120px; display: flex; justify-content: center; align-items: flex-start; padding-top: 5px; }
+    .device-img { width: 80px; z-index: 2; position: relative; }
     #led-ring { position: absolute; width: 100%; height: 100%; top: 0; left: 0; }
-    .led { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: #03a9f4; border-radius: 50%; margin: -2px; pointer-events: none; }
+    .led { position: absolute; top: 50%; left: 50%; width: 3px; height: 3px; background: #4caf50; border-radius: 50%; margin: -1.5px; z-index: 3; }
 
-    .progress-bar-bg { height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
-    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #f44336, #ffeb3b, #4caf50); }
-    .time-left-center { text-align: center; font-size: 12px; color: #03a9f4; margin-bottom: 8px; }
+    .soc-range-row { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 2px; }
+    .stat-item { display: flex; align-items: center; gap: 4px; }
+    .stat-item ha-icon { --mdc-icon-size: 14px; }
 
-    .power-row-inline { display: flex; align-items: baseline; gap: 10px; margin-top: 5px; }
-    .main-power { font-size: 28px; font-weight: bold; }
-    .sub-power { font-size: 14px; color: #777; }
+    .progress-bar-bg { height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #f44336, #ffeb3b, #4caf50); transition: width 0.5s ease; }
+    .time-left-text { text-align: center; font-size: 11px; color: #03a9f4; margin-top: 2px; }
 
-    .settings-area { border-top: 1px solid #333; padding-top: 10px; margin-top: 10px; }
-    .phases-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .power-row-inline { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
+    .main-power { font-size: 26px; font-weight: bold; }
+    .sub-power { font-size: 12px; color: #777; }
+
+    .settings-area { border-top: 1px solid #333; padding-top: 8px; margin-top: 8px; }
+    .settings-header { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #555; font-weight: bold; margin-bottom: 6px; }
+    .header-icons { display: flex; gap: 10px; color: #888; }
+    .header-icons ha-icon { --mdc-icon-size: 16px; cursor: pointer; }
+
+    .phases-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; }
     .chips { display: flex; gap: 6px; }
-    .chip { background: #333; padding: 4px 12px; border-radius: 12px; font-size: 11px; cursor: pointer; }
+    .chip { background: #333; padding: 3px 10px; border-radius: 10px; font-size: 10px; cursor: pointer; }
     .chip.active { background: #03a9f4; }
     
-    .slider-row { display: flex; align-items: center; gap: 10px; }
-    input[type=range] { flex: 1; accent-color: #03a9f4; }
-    .amp-box { font-weight: bold; font-size: 14px; min-width: 30px; }
+    .slider-row { display: flex; align-items: center; gap: 8px; }
+    input[type=range] { flex: 1; accent-color: #03a9f4; margin: 0; }
+    .amp-box { font-weight: bold; font-size: 12px; min-width: 25px; text-align: right; }
   `;
+}
 }
