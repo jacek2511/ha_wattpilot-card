@@ -1,9 +1,7 @@
 import { css } from 'lit';
 
 export const cardStyles = css`
-  :host {
-    display: block;
-  }
+  :host { display: block; }
   ha-card { padding: 4px 12px 12px 12px; background: #1c1c1c; color: white; overflow: hidden; }
   .card-header { display: flex; justify-content: space-between; margin-top: -12px; margin-bottom: -2px; height: 32px; align-items: center;  }
   .reason-badge { border: 1px solid #333; padding: 1px 8px; border-radius: 12px; color: #666; font-size: 10px; }
