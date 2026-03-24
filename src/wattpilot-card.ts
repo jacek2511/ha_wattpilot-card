@@ -212,6 +212,16 @@ export class WattpilotCard extends LitElement {
     const rangeTarget = this._getState('entity_max_range') !== undefined ? Math.round(parseFloat(this._getState('entity_max_range'))) : '--';
     const power = parseFloat(this._getState('entity_power') || '0').toFixed(1);
     const sessionEnergy = parseFloat(this._getState('entity_session_energy') || '0').toFixed(1);
+    const chargeEnd = this._getState('entity_charge_end');
+    const now = new Date();
+    const end = chargeEnd ? new Date(chargeEnd) : null;
+
+    // Obliczamy różnicę w milisekundach i zamieniamy na HH:MM
+    const diff = end && end > now ? end.getTime() - now.getTime() : 0;
+    const h = Math.floor(diff / 3600000);
+    const m = Math.round((diff % 3600000) / 60000);
+
+    const timeLeftStr = diff > 0 ? `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} left` : '';
     
     // Zabezpieczenie przed ".0" i ujednolicenie
     const rawPhase = String(this._getState('entity_phase') || 'Auto');
@@ -309,9 +319,13 @@ export class WattpilotCard extends LitElement {
 
         <div class="charging-progress-area">
           <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${soc}%"></div></div>
-          ${timeLeft && timeLeft !== '--' ? html`<div class="time-left-text">Pozostało: ${timeLeft}</div>` : ''}
+          ${timeLeftStr ? html`
+              <div style="text-align: center; font-size: 0.85em; margin-top: 2px; color: var(--secondary-text-color); font-weight: 500; letter-spacing: 0.5px;">
+                  ${timeLeftStr}
+              </div>
+          ` : ''}
         </div>
-
+  
         <div class="power-row-inline">
           <span class="main-power">${power} kW</span>
           <span class="sub-power">${totalAmps} A &nbsp;|&nbsp; ${sessionEnergy} kWh &nbsp;|&nbsp; ${phaseStatus}</span>
