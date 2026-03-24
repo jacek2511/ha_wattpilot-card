@@ -9,7 +9,7 @@ const WATT_IMG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANoAAAGNCAYAAAB3
 
 interface HomeAssistant {
   states: { [entity_id: string]: any };
-  ervice(domain: string, service: string, data?: any): void;
+  callService(domain: string, service: string, data?: any): void; // Poprawiona literówka (było ervice)
 }
 
 interface WattpilotConfig {
@@ -80,44 +80,27 @@ export class WattpilotCard extends LitElement {
   }
 
   // --- FUNKCJE POMOCNICZE DLA DANYCH Z HA ---
-  // Pobiera obiekt stanu (Hass Entity) niezależnie od formatu w YAML
+  
   private _getEntity(key: string) {
     if (!this.config || !this.config[key]) return undefined;
     
-    // Obsługa obu formatów: "sensor.name" LUB { entity: "sensor.name" }
     const conf = this.config[key];
     const eid = typeof conf === 'object' ? conf.entity : conf;
     
     return this.hass && eid ? this.hass.states[eid] : undefined;
   }
 
-  // Pobiera wartość (stan LUB atrybut) w sposób uniwersalny
   private _getState(key: string) {
     const conf = this.config[key];
     const stateObj = this._getEntity(key);
     
     if (!stateObj) return undefined;
 
-    // Jeśli w YAML zdefiniowano 'attribute', pobierz go. W przeciwnym razie weź 'state'.
     if (typeof conf === 'object' && conf.attribute) {
       return stateObj.attributes[conf.attribute];
     }
     
     return stateObj.state;
-  }
-  
-  private _getEntityState(configKey: string): string {
-    const entityId = this.config[configKey];
-    return entityId && this.hass.states[entityId] 
-      ? this.hass.states[entityId].state 
-      : '--';
-  }
-  
-  private _getAttribute(configKey: string, attribute: string): any {
-    const entityId = this.config[configKey];
-    return entityId && this.hass.states[entityId] 
-      ? this.hass.states[entityId].attributes[attribute] 
-      : undefined;
   }
   
   private _formatValue(val: any): string {
@@ -128,21 +111,15 @@ export class WattpilotCard extends LitElement {
   // --- AKCJE I SERWISY ---
 
   private _setMode(mode: string) {
-    if (!this.config || !this.config.entity_mode) return;
-    const eid = typeof this.config.entity_mode === 'object' ? this.config.entity_mode.entity : this.config.entity_mode;
-    this._callService('select', 'select_option', { entity_id: eid, option: mode });
+    this._callService('select', 'select_option', 'entity_mode', { option: mode });
   }
 
   private _setPhases(phases: string) {
-    if (!this.config || !this.config.entity_phase) return;
-    const eid = typeof this.config.entity_phase === 'object' ? this.config.entity_phase.entity : this.config.entity_phase;
-    this._callService('select', 'select_option', { entity_id: eid, option: phases });
+    this._callService('select', 'select_option', 'entity_phase', { option: phases });
   }
 
-  private _callAction(actionKey: 'entity_force' | 'entity_start' | 'entity_stop') {
-    if (!this.config || !this.config[actionKey]) return;
-    const eid = typeof this.config[actionKey] === 'object' ? this.config[actionKey].entity : this.config[actionKey];
-    this._callService('button', 'press', { entity_id: eid });
+  private _callAction(actionKey: string) {
+    this._callService('button', 'press', actionKey);
   }
   
   private _callService(domain: string, service: string, configKey: string, extraData = {}) {
@@ -161,34 +138,15 @@ export class WattpilotCard extends LitElement {
   }
 
   private _handleSliderChange(e: Event) {
-    if (!this.config || !this.config.entity_current) return;
-    const eid = typeof this.config.entity_current === 'object' ? this.config.entity_current.entity : this.config.entity_current;
-    
-    this.hass.ervice('number', 'set_value', { 
-      entity_id: eid, 
-      value: (e.target as HTMLInputElement).value 
-    });
-
+    const val = (e.target as HTMLInputElement).value;
+    this._callService('number', 'set_value', 'entity_current', { value: val });
     setTimeout(() => { this._isInteracting = false; }, 2000);
-  }
-
-  private _openDetails(entityKey: string) {
-    if (!this.config || !this.config[entityKey]) return;
-    const eid = typeof this.config[entityKey] === 'object' ? this.config[entityKey].entity : this.config[entityKey];
-    
-    this.dispatchEvent(new CustomEvent('hass-action', {
-      detail: {
-        config: { entity: eid },
-        action: 'more-info',
-      },
-      bubbles: true,
-      composed: true,
-    }));
   }
 
   private _togglePanel(panelId: string) {
     this._activePanel = this._activePanel === panelId ? '' : panelId;
   }
+
   // --- HTML RENDERER ---
 
   private _renderSideColumn(side: 'left' | 'right'): TemplateResult {
@@ -251,13 +209,18 @@ export class WattpilotCard extends LitElement {
     const range = this._getState('entity_range') || '--';
     const rangeTarget = this._getState('entity_max_range') || '--';
     const power = parseFloat(this._getState('entity_power') || '0').toFixed(1);
-    const sessionEnergy = parseFloat(this._getState('entity_energy_session') || '0').toFixed(1);
-    const phases = this._getState('entity_phase') || 'Auto';
+    const sessionEnergy = parseFloat(this._getState('entity_session_energy') || '0').toFixed(1);
+    
+    // Zabezpieczenie przed ".0" i ujednolicenie
+    const rawPhase = String(this._getState('entity_phase') || 'Auto');
+    const phases = rawPhase.replace('.0', ''); 
+
     const timeLeft = this._getState('entity_time_left');
     const wifiState = this._getState('entity_wifi_state') || '--';
     const wifiSignal = this._getState('entity_wifi_signal') || '--';
     const wifiConn= this._getState('entity_wifi_conn') || '--';
     const totalCharged = this._getState('entity_total_charged') || '0';
+    
     const powerEnt = this._getEntity('entity_power');
     const attr = powerEnt?.attributes || {};
     const internalError = this._getState('entity_internal_error');
@@ -351,8 +314,8 @@ export class WattpilotCard extends LitElement {
             <span>Phases</span>
             <div class="chips">
               <div class="chip ${phases === 'Auto' ? 'active' : ''}" @click=${() => this._setPhases('Auto')}>Auto</div>
-              <div class="chip ${phases === '1 Phase' ? 'active' : ''}" @click=${() => this._setPhases('1 Phase')}>1</div>
-              <div class="chip ${phases === '3 Phases' ? 'active' : ''}" @click=${() => this._setPhases('3 Phases')}>3</div>
+              <div class="chip ${phases === '1' ? 'active' : ''}" @click=${() => this._setPhases('1')}>1</div>
+              <div class="chip ${phases === '3' ? 'active' : ''}" @click=${() => this._setPhases('3')}>3</div>
             </div>
           </div>
           
@@ -370,9 +333,9 @@ export class WattpilotCard extends LitElement {
              <div class="section-title">SYSTEM SETTINGS</div>
              <div class="control-row">
                 <span class="control-label">Lock Level</span>
-                <span>(Brak encji - do oprogramowania w kolejnym kroku)</span>
+                <span>(Brak encji - do oprogramowania)</span>
              </div>
-             <button id="btn-restart" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ef4444; background:transparent; color:#ef4444; cursor:pointer; font-weight:bold; margin-top:5px;">RESTART WATTPILOT</button>
+             <button @click=${() => this._callAction('entity_restart')} style="width:100%; padding:8px; border-radius:4px; border:1px solid #ef4444; background:transparent; color:#ef4444; cursor:pointer; font-weight:bold; margin-top:5px;">RESTART WATTPILOT</button>
           </div>
 
           <div id="wifi-panel" class="sub-panel" style="display: ${this._activePanel === 'wifi-panel' ? 'block' : 'none'};">
@@ -395,7 +358,7 @@ export class WattpilotCard extends LitElement {
               <span>Auto Disable Hotspot</span>
                 <ha-switch 
                   .checked=${this._getState('entity_led_save') === 'on'}
-                  @change=${(e: any) => this._callService('switch', e.target.checked ? 'turn_on' : 'turn_off', this.config.entity_led_save)}>
+                  @change=${(e: any) => this._callService('switch', e.target.checked ? 'turn_on' : 'turn_off', 'entity_led_save')}>
                 </ha-switch>
             </div>
           </div>
@@ -446,8 +409,10 @@ export class WattpilotCard extends LitElement {
              <div class="control-row">
                 <span class="control-label">Target SoC</span>
                 <div class="right-controls">
-                   <input type="range" min="0" max="100">
-                   <span class="val-txt">--%</span>
+                   <input type="range" min="0" max="100"
+                     .value=${this._getState('entity_target_soc') || 0}
+                     @change=${(e: any) => this._callService('input_number', 'set_value', 'entity_target_soc', { value: e.target.value })}>
+                   <span class="val-txt">${this._getState('entity_target_soc') || '--'}%</span>
                 </div>
              </div>
           </div>
@@ -456,5 +421,4 @@ export class WattpilotCard extends LitElement {
       </ha-card>
     `;
   }
-
 }
