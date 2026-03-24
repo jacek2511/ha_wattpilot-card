@@ -44,23 +44,24 @@ export class WattpilotCard extends LitElement {
     this.config = config;
   }
 
-  // --- CYKL ŻYCIA KOMPONENTU ---
-
   connectedCallback() {
     super.connectedCallback();
+    // Skracamy interwał do 50ms-80ms, żeby animacja była płynniejsza
     this._mainLoop = window.setInterval(() => {
-      if (this.__isCharging) {
+      // SPRAWDŹ: Czy na pewno używasz _isCharging (jedno podkreślenie)?
+      if (this._isCharging) {
         this._animIdx = (this._animIdx + 1) % 32;
+        this.requestUpdate(); // WYMUSZA przerysowanie diod w nowej pozycji
       }
-    }, 100);
+    }, 60); 
   }
 
   disconnectedCallback() {
-    super.disconnectedCallback();
     if (this._mainLoop !== null) {
       window.clearInterval(this._mainLoop);
       this._mainLoop = null;
     }
+    super.disconnectedCallback();
   }
 
   protected updated(changedProperties: PropertyValues) {
