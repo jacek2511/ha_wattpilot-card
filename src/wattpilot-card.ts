@@ -152,28 +152,30 @@ export class WattpilotCard extends LitElement {
   private _renderSideColumn(side: 'left' | 'right'): TemplateResult {
     const rows: TemplateResult[] = [];
     for (let i = 1; i <= 5; i++) {
-      const cfg = this.config[`${side}${i}`];
+      const key = `${side}${i}`;
+      const cfg = this.config[key];
       if (!cfg) continue;
       
-      const eid = typeof cfg === 'object' ? cfg.entity : cfg;
-      const stateObj = this.hass.states[eid];
+      const stateObj = this._getEntity(key);
       if (!stateObj) continue;
 
-      const val = this._formatValue(stateObj.state);
+      // Korzystamy z Twojej funkcji _getState, która obsłuży atrybut lub stan
+      const rawValue = this._getState(key);
+      const val = this._formatValue(rawValue);
+      
       const unit = (typeof cfg === 'object' ? cfg.unit : undefined) || stateObj.attributes.unit_of_measurement || '';
       const icon = (typeof cfg === 'object' ? cfg.icon : undefined) || stateObj.attributes.icon || 'mdi:dots-horizontal';
 
       rows.push(html`
         <div class="data-row ${side}">
           ${side === 'left' 
-            ? html`<ha-icon .icon=${icon}></ha-icon><span>${val} ${unit}</span>` 
-            : html`<span>${val} ${unit}</span><ha-icon .icon=${icon}></ha-icon>`}
+            ? html`<ha-icon .icon=${icon}></ha-icon><span>${val}${unit}</span>` 
+            : html`<span>${val}${unit}</span><ha-icon .icon=${icon}></ha-icon>`}
         </div>
       `);
     }
     return html`<div class="side-column">${rows}</div>`;
   }
-
   private _renderLedRing(): TemplateResult[] {
     const activeAmps = Math.min(32, this._currentAmps);
     const status = (this._getState('entity_status') || '').toLowerCase();
