@@ -9,7 +9,7 @@ const WATT_IMG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANoAAAGNCAYAAAB3
 
 interface HomeAssistant {
   states: { [entity_id: string]: any };
-  callService(domain: string, service: string, data?: any): void;
+  ervice(domain: string, service: string, data?: any): void;
 }
 
 interface WattpilotConfig {
@@ -89,9 +89,23 @@ export class WattpilotCard extends LitElement {
 
   private _getState(key: string) {
     const stateObj = this._getEntity(key);
-    return stateObj ? stateObj.state : undefined;
+    return stateObj ? stateObj.state : '--';
   }
-
+  
+  private _getEntityState(configKey: string): string {
+    const entityId = this.config[configKey];
+    return entityId && this.hass.states[entityId] 
+      ? this.hass.states[entityId].state 
+      : '--';
+  }
+  
+  private _getAttribute(configKey: string, attribute: string): any {
+    const entityId = this.config[configKey];
+    return entityId && this.hass.states[entityId] 
+      ? this.hass.states[entityId].attributes[attribute] 
+      : undefined;
+  }
+  
   private _formatValue(val: any): string {
     const num = parseFloat(val);
     return isNaN(num) ? '--' : Math.round(num).toString();
@@ -102,19 +116,19 @@ export class WattpilotCard extends LitElement {
   private _setMode(mode: string) {
     if (!this.config || !this.config.entity_mode) return;
     const eid = typeof this.config.entity_mode === 'object' ? this.config.entity_mode.entity : this.config.entity_mode;
-    this.hass.callService('select', 'select_option', { entity_id: eid, option: mode });
+    this.hass.ervice('select', 'select_option', { entity_id: eid, option: mode });
   }
 
   private _setPhases(phases: string) {
     if (!this.config || !this.config.entity_phase) return;
     const eid = typeof this.config.entity_phase === 'object' ? this.config.entity_phase.entity : this.config.entity_phase;
-    this.hass.callService('select', 'select_option', { entity_id: eid, option: phases });
+    this.hass.ervice('select', 'select_option', { entity_id: eid, option: phases });
   }
 
   private _callAction(actionKey: 'entity_force' | 'entity_start' | 'entity_stop') {
     if (!this.config || !this.config[actionKey]) return;
     const eid = typeof this.config[actionKey] === 'object' ? this.config[actionKey].entity : this.config[actionKey];
-    this.hass.callService('button', 'press', { entity_id: eid });
+    this.hass.ervice('button', 'press', { entity_id: eid });
   }
 
   private _handleSliderInput(e: Event) {
@@ -126,7 +140,7 @@ export class WattpilotCard extends LitElement {
     if (!this.config || !this.config.entity_current) return;
     const eid = typeof this.config.entity_current === 'object' ? this.config.entity_current.entity : this.config.entity_current;
     
-    this.hass.callService('number', 'set_value', { 
+    this.hass.ervice('number', 'set_value', { 
       entity_id: eid, 
       value: (e.target as HTMLInputElement).value 
     });
@@ -216,7 +230,12 @@ export class WattpilotCard extends LitElement {
     const sessionEnergy = parseFloat(this._getState('entity_energy_session') || '0').toFixed(1);
     const phases = this._getState('entity_phase') || 'Auto';
     const timeLeft = this._getState('entity_time_left');
-
+    const wifiState = this._getState('entity_wifi_state') || '--';
+    const wifiSSID = this._getState('entity_wifi_ssid') || '--';
+    const totalCharged = this._getState('entity_total_charged') || '0';
+    const powerEnt = this._getEntity('entity_power');
+    const attr = powerEnt?.attributes || {};
+    
     return html`
       <ha-card>
         <div class="card-header">
@@ -329,23 +348,68 @@ export class WattpilotCard extends LitElement {
           </div>
 
           <div id="wifi-panel" class="sub-panel" style="display: ${this._activePanel === 'wifi-panel' ? 'block' : 'none'};">
-             <div class="divider"></div>
-             <div class="section-title">WIFI CONFIGURATION</div>
-             <div class="control-row"><span class="control-label">Status</span><span class="val-txt">--</span></div>
-             <div class="control-row"><span class="control-label">Network</span><span class="val-txt">--</span></div>
-             <div class="control-row"><span class="control-label">Signal Strength</span><span class="val-txt">--</span></div>
+            <div class="divider"></div>
+            <div class="section-title">WIFI CONFIGURATION</div>
+            <div class="control-row">
+              <span class="control-label">Status</span>
+              <span class="val-txt">${wifiState}</span>
+            </div>
+            <div class="control-row">
+              <span class="control-label">Network</span>
+              <span class="val-txt">${wifiConn}</span>
+            </div>
+            <div class="control-row">
+              <span class="control-label">Signal Strength</span>
+              <span class="val-txt">${wifiSignal} dBm</span>
+            </div>
+            <div class="divider"></div>
+            <div class="control-row">
+              <span>Auto Disable Hotspot</span>
+              <ha-switch 
+                .checked=${states[this.config.entity_hotspot_sw]?.state === 'on'}
+                @change=${(e: any) => this._ervice('switch', e.target.checked ? 'turn_on' : 'turn_off', this.config.entity_hotspot_sw)}>
+              </ha-switch>
+            </div>
           </div>
 
           <div id="info-panel" class="sub-panel" style="display: ${this._activePanel === 'info-panel' ? 'block' : 'none'};">
-             <div class="divider"></div>
-             <div class="section-title">CHARGER INFO</div>
-             <div class="control-row">
-                <span class="control-label">Total Charged</span>
-                <span class="val-txt">-- kWh</span>
-             </div>
-             <div id="l1-line" class="phase-line">L1: 0W, 0V, 0A</div>
-             <div id="l2-line" class="phase-line">L2: 0W, 0V, 0A</div>
-             <div id="l3-line" class="phase-line">L3: 0W, 0V, 0A</div>
+            <div class="divider"></div>
+            <div class="section-title">CHARGER INFO</div>
+            <div class="control-row">
+              <span class="control-label">Total Charged</span>
+              <span class="val-txt">${parseFloat(totalCharged).toFixed(1)} kWh</span>
+            </div>
+            
+            <div class="divider" style="opacity: 0.1;"></div>
+            
+            <div class="phase-line">
+              <span class="phase-label">L1:</span> 
+              ${Math.round(attr.L1_Power || 0)}W, ${attr.L1_Voltage || 0}V, ${attr.L1_Ampere || 0}A
+            </div>
+            <div class="phase-line">
+              <span class="phase-label">L2:</span> 
+              ${Math.round(attr.L2_Power || 0)}W, ${attr.L2_Voltage || 0}V, ${attr.L2_Ampere || 0}A
+            </div>
+            <div class="phase-line">
+              <span class="phase-label">L3:</span> 
+              ${Math.round(attr.L3_Power || 0)}W, ${attr.L3_Voltage || 0}V, ${attr.L3_Ampere || 0}A
+            </div>
+            
+            <div class="divider" style="opacity: 0.1;"></div>
+          
+            <div class="control-row">
+              <span class="control-label">Internal Error</span>
+              <span class="val-txt" style="color: ${hasError ? '#f44336' : 'inherit'}">
+                ${internalError}
+              </span>
+            </div>
+          
+            <div class="control-row">
+              <span class="control-label">Firmware Update</span>
+              <span class="val-txt" style="color: ${firmwareUpdate ? '#4caf50' : 'inherit'}">
+                ${firmwareUpdate ? 'Available' : 'No Update'}
+              </span>
+            </div>
           </div>
 
           <div id="charge-settings-panel" class="sub-panel" style="display: ${this._activePanel === 'charge-settings-panel' ? 'block' : 'none'};">
