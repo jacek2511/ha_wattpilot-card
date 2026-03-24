@@ -236,6 +236,8 @@ export class WattpilotCard extends LitElement {
     const totalCharged = this._getState('entity_total_charged') || '0';
     const powerEnt = this._getEntity('entity_power');
     const attr = powerEnt?.attributes || {};
+    const internalError = this._getState('entity_internal_error');
+    const hasError = internalError !== 'None' && internalError !== '--' && internalError !== 'unknown';
     
     return html`
       <ha-card>
@@ -366,10 +368,10 @@ export class WattpilotCard extends LitElement {
             <div class="divider"></div>
             <div class="control-row">
               <span>Auto Disable Hotspot</span>
-              <ha-switch 
-                .checked=${states[this.config.entity_hotspot_sw]?.state === 'on'}
-                @change=${(e: any) => this._ervice('switch', e.target.checked ? 'turn_on' : 'turn_off', this.config.entity_hotspot_sw)}>
-              </ha-switch>
+                <ha-switch 
+                  .checked=${this._getState('entity_led_save') === 'on'}
+                  @change=${(e: any) => this._callService('switch', e.target.checked ? 'turn_on' : 'turn_off', this.config.entity_led_save)}>
+                </ha-switch>
             </div>
           </div>
 
