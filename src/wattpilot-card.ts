@@ -371,12 +371,7 @@ export class WattpilotCard extends LitElement {
                 <div class="shimmer-layer"></div>
             </div>
           </div>
-          
-          ${timeLeftStr ? html`
-              <div style="text-align: center; font-size: 0.75em; margin-top: 0px; color: var(--secondary-text-color); font-weight: 400;">
-                  ${timeLeftStr}
-              </div>
-          ` : ''}
+          ${timeLeftStr ? html`<div class="time-left-display">${timeLeftStr}</div>` : ''}
         </div>
   
         <div class="power-row-inline">
