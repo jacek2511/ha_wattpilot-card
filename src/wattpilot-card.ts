@@ -342,40 +342,119 @@ export class WattpilotCard extends LitElement {
              </div>
 
              <div class="control-row">
-                <span class="control-label">Phase Switch Delay</span>
+                <span class="control-label">Cable Unlock</span>
+                <select class="custom-select" 
+                  .value=${this._getState('entity_cable_unlock') || ''}
+                  @change=${(e: any) => this._callService('select', 'select_option', 'entity_cable_unlock', { option: e.target.value })}>
+                  ${this._getEntity('entity_cable_unlock')?.attributes?.options?.map((opt: string) => html`<option value="${opt}">${opt}</option>`) || html`<option value="">--</option>`}
+                </select>
+             </div>
+
+             <div class="divider"></div>
+
+             <div class="control-row">
+                <span class="control-label">Min Charge Time</span>
                 <div class="right-controls">
-                   <input type="number" step="1" class="custom-input" style="width: 60px; text-align: right;"
-                     .value=${msToMin(this._getState('entity_phase_delay') || 0)}
-                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_phase_delay', { value: minToMs(parseFloat(e.target.value)) })}>
-                   <span class="val-txt" style="margin-left: 5px;">min</span>
+                   <input type="range" min="0" max="60" 
+                     .value=${msToMin(this._getState('entity_min_time') || 0)}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_min_time', { value: minToMs(parseFloat(e.target.value)) })}>
+                   <span class="val-txt">${msToMin(this._getState('entity_min_time') || 0)}m</span>
                 </div>
              </div>
 
              <div class="control-row">
-                <span class="control-label">PV Battery Threshold</span>
+                <span class="control-label">Phase Switch Delay</span>
                 <div class="right-controls">
-                   <input type="number" step="0.1" class="custom-input" style="width: 60px; text-align: right;"
-                     .value=${wToKw(this._getState('entity_pv_threshold') || 0)}
-                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_pv_threshold', { value: kwToW(parseFloat(e.target.value)) })}>
-                   <span class="val-txt" style="margin-left: 5px;">kW</span>
+                   <input type="range" min="0" max="60" 
+                     .value=${msToMin(this._getState('entity_phase_delay') || 0)}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_phase_delay', { value: minToMs(parseFloat(e.target.value)) })}>
+                   <span class="val-txt">${msToMin(this._getState('entity_phase_delay') || 0)}m</span>
+                </div>
+             </div>
+
+             <div class="control-row">
+                <span class="control-label">Phase Switch Interval</span>
+                <div class="right-controls">
+                   <input type="range" min="0" max="60" 
+                     .value=${msToMin(this._getState('entity_phase_interval') || 0)}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_phase_interval', { value: minToMs(parseFloat(e.target.value)) })}>
+                   <span class="val-txt">${msToMin(this._getState('entity_phase_interval') || 0)}m</span>
                 </div>
              </div>
 
              <div class="divider"></div>
 
              <div class="control-row">
+                <span class="control-label">PV Battery Threshold</span>
+                <div class="right-controls">
+                   <input type="range" min="0" max="100" 
+                     .value=${this._getState('entity_pv_threshold') || 0}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_pv_threshold', { value: parseFloat(e.target.value) })}>
+                   <span class="val-txt">${this._getState('entity_pv_threshold') || 0}%</span>
+                </div>
+             </div>
+
+             <div class="control-row">
+                <span class="control-label">Boost Discharge Until</span>
+                <div class="right-controls">
+                   <input type="range" min="0" max="100" 
+                     .value=${this._getState('entity_boost_limit') || 0}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_boost_limit', { value: parseFloat(e.target.value) })}>
+                   <span class="val-txt">${this._getState('entity_boost_limit') || 0}%</span>
+                </div>
+             </div>
+
+             <div class="control-row">
+                <span class="control-label">3-Phase Power Level</span>
+                <div class="right-controls">
+                   <input type="range" min="1.0" max="11.0" step="0.1"
+                     .value=${wToKw(this._getState('entity_phase_power') || 0)}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_phase_power', { value: kwToW(parseFloat(e.target.value)) })}>
+                   <span class="val-txt">${wToKw(this._getState('entity_phase_power') || 0)}kW</span>
+                </div>
+             </div>
+
+             <div class="divider"></div>
+
+             <div class="control-row">
+                <span class="control-label">Pause Charging</span>
+                <ha-switch .checked=${this._getState('entity_charge_pause') === 'on'}
+                  @change=${(e: any) => this._callService('switch', e.target.checked ? 'turn_on' : 'turn_off', 'entity_charge_pause')}>
+                </ha-switch>
+             </div>
+
+             <div class="control-row">
+                <span class="control-label">Simulate Unplugging</span>
+                <ha-switch .checked=${this._getState('entity_sim_unplug') === 'on'}
+                  @change=${(e: any) => this._callService('switch', e.target.checked ? 'turn_on' : 'turn_off', 'entity_sim_unplug')}>
+                </ha-switch>
+             </div>
+
+             <div class="control-row">
+                <span class="control-label">Unlock on Power Outage</span>
+                <ha-switch .checked=${this._getState('entity_power_outage') === 'on'}
+                  @change=${(e: any) => this._callService('switch', e.target.checked ? 'turn_on' : 'turn_off', 'entity_power_outage')}>
+                </ha-switch>
+             </div>
+
+             <div class="control-row">
                 <span class="control-label">Ground Check</span>
-                <ha-switch 
-                  .checked=${this._getState('entity_ground_check') === 'on'}
+                <ha-switch .checked=${this._getState('entity_ground_check') === 'on'}
                   @change=${(e: any) => this._callService('switch', e.target.checked ? 'turn_on' : 'turn_off', 'entity_ground_check')}>
+                </ha-switch>
+             </div>
+
+             <div class="control-row">
+                <span class="control-label">LED Energy Saving</span>
+                <ha-switch .checked=${this._getState('entity_led_save') === 'on'}
+                  @change=${(e: any) => this._callService('switch', e.target.checked ? 'turn_on' : 'turn_off', 'entity_led_save')}>
                 </ha-switch>
              </div>
 
              <div class="divider"></div>
 
              <button @click=${() => this._callAction('entity_restart')} 
-                     style="width:100%; padding:10px; border-radius:6px; border:1px solid #ef4444; background: rgba(239, 68, 68, 0.1); color:#ef4444; cursor:pointer; font-weight:bold; margin-top:10px; transition: 0.2s;">
-                <ha-icon icon="mdi:restart" style="--mdc-icon-size: 18px; vertical-align: middle;"></ha-icon>
+                     style="width:100%; padding:12px; border-radius:8px; border:1px solid #ef4444; background:transparent; color:#ef4444; cursor:pointer; font-weight:bold; margin-top:10px; text-transform: uppercase;">
                 RESTART WATTPILOT
              </button>
           </div>
@@ -539,15 +618,12 @@ export class WattpilotCard extends LitElement {
              </div>
              
             <div class="control-row">
-              <span class="control-label">Next Trip Duration</span>
-              <div class="right-controls">
-                <input type="number" class="custom-input" style="width: 60px;"
-                  .value=${msToMin(this._getState('entity_next_trip_duration') || 0)}
-                  @change=${(e: any) => this._callService('number', 'set_value', 'entity_next_trip_duration', { value: minToMs(parseFloat(e.target.value)) })}>
-                <span class="val-txt">min</span>
-              </div>
+              <span class="control-label">Next Trip Time</span>
+              <input type="time" class="custom-input" 
+                .value=${(this._getState('entity_next_trip_timing') || '00:00:00').substring(0,5)}
+                @change=${(e: any) => this._callService('input_datetime', 'set_datetime', 'entity_next_trip_timing', { time: e.target.value })}>
             </div>
-            
+
              <div class="control-row">
                 <span class="control-label">Remain in Eco Mode</span>
                 <ha-switch 
