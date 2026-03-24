@@ -499,23 +499,26 @@ export class WattpilotCard extends LitElement {
              
              <div style="padding: 10px 0; font-family: monospace; font-size: 0.85em; line-height: 1.8;">
                 <div style="color: #4da3ff;">L1: <span style="color: #eee;">
-                   ${Number(this._getState('entity_l1_pwr') || 0).toFixed(1)}W, 
-                   ${Number(this._getState('entity_l1_vol') || 0).toFixed(1)}V, 
-                   ${Number(this._getState('entity_l1_amp') || 0).toFixed(1)}A, 0.0%</span>
+                   ${Math.round(parseFloat(attr['L1_Power'] || '0'))}W, 
+                   ${parseFloat(attr['L1_Voltage'] || '0').toFixed(1)}V, 
+                   ${parseFloat(attr['L1_Ampere'] || '0').toFixed(1)}A, 
+                   ${parseFloat(attr['L1_PowerRelative'] || '0').toFixed(1)}%</span>
                 </div>
                 <div style="color: #4da3ff;">L2: <span style="color: #eee;">
-                   ${Number(this._getState('entity_l2_pwr') || 0).toFixed(1)}W, 
-                   ${Number(this._getState('entity_l2_vol') || 0).toFixed(1)}V, 
-                   ${Number(this._getState('entity_l2_amp') || 0).toFixed(1)}A, 0.0%</span>
+                   ${Math.round(parseFloat(attr['L2_Power'] || '0'))}W, 
+                   ${parseFloat(attr['L2_Voltage'] || '0').toFixed(1)}V, 
+                   ${parseFloat(attr['L2_Ampere'] || '0').toFixed(1)}A, 
+                   ${parseFloat(attr['L2_PowerRelative'] || '0').toFixed(1)}%</span>
                 </div>
                 <div style="color: #4da3ff;">L3: <span style="color: #eee;">
-                   ${Number(this._getState('entity_l3_pwr') || 0).toFixed(1)}W, 
-                   ${Number(this._getState('entity_l3_vol') || 0).toFixed(1)}V, 
-                   ${Number(this._getState('entity_l3_amp') || 0).toFixed(1)}A, 0.0%</span>
+                   ${Math.round(parseFloat(attr['L3_Power'] || '0'))}W, 
+                   ${parseFloat(attr['L3_Voltage'] || '0').toFixed(1)}V, 
+                   ${parseFloat(attr['L3_Ampere'] || '0').toFixed(1)}A, 
+                   ${parseFloat(attr['L3_PowerRelative'] || '0').toFixed(1)}%</span>
                 </div>
                 <div style="color: #4da3ff;">N:  <span style="color: #eee;">
-                   ${Number(this._getState('entity_n_pwr') || 0).toFixed(1)}W, 
-                   ${Number(this._getState('entity_n_vol') || 0).toFixed(1)}V</span>
+                   ${Math.round(parseFloat(attr['N_Power'] || '0'))}W, 
+                   ${parseFloat(attr['N_Voltage'] || '0').toFixed(1)}V</span>
                 </div>
              </div>
 
@@ -528,19 +531,19 @@ export class WattpilotCard extends LitElement {
 
              <div class="control-row">
                 <span class="control-label">Firmware Update</span>
-                <span class="val-txt" style="color: ${this._getState('entity_fw_current') !== this._getState('entity_fw_latest') ? '#4da3ff' : 'inherit'};">
-                   ${this._getState('entity_fw_current') !== this._getState('entity_fw_latest') ? 'Update Available' : 'No Update'}
+                <span class="val-txt" style="color: ${firmwareUpdate?.state === 'on' ? '#4da3ff' : 'inherit'};">
+                   ${firmwareUpdate?.state === 'on' ? 'Update Available' : 'Up to date'}
                 </span>
              </div>
 
              <div class="control-row" style="margin-top: -5px; margin-bottom: 15px;">
                 <span class="control-label" style="font-size: 0.75em; opacity: 0.5;">Firmware Version (installed/latest)</span>
                 <span class="val-txt" style="font-size: 0.75em; opacity: 0.7;">
-                   ${this._getState('entity_fw_current') || '--'} / ${this._getState('entity_fw_latest') || '--'}
+                   ${firmwareUpdate?.attributes?.installed_version || '--'} / ${firmwareUpdate?.attributes?.latest_version || '--'}
                 </span>
              </div>
 
-             ${this._getState('entity_fw_current') !== this._getState('entity_fw_latest') ? html`
+             ${firmwareUpdate?.state === 'on' ? html`
                 <button @click=${() => confirm('Start Update?') ? this._callAction('entity_start_update') : null} 
                         style="width:100%; padding:10px; border-radius:6px; border:1px solid #4da3ff; background: rgba(77, 163, 255, 0.1); color:#4da3ff; cursor:pointer; font-weight:bold; margin-bottom: 10px;">
                    INSTALL UPDATE
