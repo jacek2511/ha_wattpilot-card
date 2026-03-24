@@ -42,7 +42,6 @@ export const cardStyles = css`
  
   .time-left-text { text-align: center; font-size: 11px; color: #03a9f4; margin-top: 4px; font-weight: 500; }
 
-  .power-row-inline { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
   .main-power { font-size: 32px; font-weight: bold; line-height: 1; }
   .sub-power { font-size: 14px; color: #777; }
 
@@ -68,30 +67,53 @@ export const cardStyles = css`
   .divider { height: 1px; background: #333; margin: 12px 0; }
   .active-icon { color: #03a9f4 !important; }
   .phase-line { font-size: 11px; margin-bottom: 4px; font-family: monospace; white-space: nowrap; color: #888;}
-
+  
   .charging-progress-area {
-      position: relative;
-      margin: 10px 0 20px 0; /* Większy margines na dole, by zmieścić napis */
+    position: relative; /* Ważne dla pozycjonowania czasu */
+    margin: 15px 0;
+    padding-bottom: 5px; /* Rezerwujemy stałe miejsce na czas */
   }
-
-  /* Styl dla kontenera - musi być 'relative' i mieć 'overflow: hidden' */
+  
   .progress-container {
-      height: 12px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 6px;
-      overflow: hidden;
-      position: relative;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
   }
 
+  .progress-bar-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%; /* Rozciąga się na cały kontener, a clip-path go docina */
+    height: 100%;
+    background: linear-gradient(90deg, #ff4d4d 0%, #fbff00 50%, #4caf50 100%);
+    transition: clip-path 0.8s cubic-bezier(0.22, 1, 0.36, 1); /* Płynne przesuwanie paska */
+    z-index: 1;
+  }
+  
+  /* Upewnij się, że shimmer jest nad gradientem */
+  .shimmer-layer {
+    z-index: 2;
+  }
+
+  /* Nowa klasa dla napisu czasu, która nie przesuwa layoutu */
   .time-left-display {
-      position: absolute;
-      top: 100%; /* Zaraz pod paskiem */
-      left: 0;
-      width: 100%;
-      text-align: center;
-      font-size: 0.75em;
-      color: var(--secondary-text-color);
-      margin-top: 2px;
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    font-size: 0.75em;
+    color: var(--secondary-text-color);
+    bottom: -14px; /* Wyrzuca napis pod pasek, ale wewnątrz marginesu area */
+    left: 0;
+  }
+  
+  .power-row-inline {
+    margin-top: 10px; /* Stały odstęp, niezależny od tego czy jest czas czy nie */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   /* Warstwa animowana */
