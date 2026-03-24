@@ -34,7 +34,7 @@ export const cardStyles = css`
   .data-row.right { justify-content: flex-end; text-align: right; }
   .data-row ha-icon { --mdc-icon-size: 16px; color: #03a9f4; }
 
-  .device-img { width: 70px; z-index: 2; position: relative; }
+  .device-img { width: 71px; z-index: 2; position: relative; }
   
   .soc-range-row { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-top: 2px; margin-bottom: 4px; }
   .stat-item { display: flex; align-items: center; gap: 4px; }
@@ -76,7 +76,7 @@ export const cardStyles = css`
   .progress-bar-fill.charging-animation::after { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%); animation: bar-flow 2s infinite linear; }
   @keyframes bar-flow { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 
-  #led-ring { position: absolute; width: 100%; height: 100%; top: 28px; left: 0; z-index: 3; pointer-events: none; }
+  #led-ring { position: absolute; width: 100%; height: 100%; top: 77px; left: 48px; z-index: 3; pointer-events: none; }
   .led-wrapper { position: relative; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; }
   .led.default-on { opacity: 1; }
   .led.active-anim { opacity: 1; box-shadow: 0 0 8px #fff; background: #fff; }
