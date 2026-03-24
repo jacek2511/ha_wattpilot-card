@@ -148,7 +148,21 @@ export class WattpilotCard extends LitElement {
   }
 
   // --- HTML RENDERER ---
+  private _getIconColor(cfg: any, rawValue: any): string {
+    if (!cfg || !cfg.color_rules || rawValue === undefined) return 'inherit';
+    const val = parseFloat(rawValue);
+    if (isNaN(val)) return 'inherit';
 
+    // Sortujemy reguły, aby znaleźć ostatnią pasującą (najwyższą spełnioną)
+    const sortedRules = [...cfg.color_rules].sort((a, b) => a.value - b.value);
+    let color = 'inherit';
+    for (const rule of sortedRules) {
+      if (val >= rule.value) color = rule.color;
+    }
+    return color;
+  }
+
+  // --- RENDERER KOLUMN BOCZNYCH ---
   private _renderSideColumn(side: 'left' | 'right'): TemplateResult {
     const rows: TemplateResult[] = [];
     for (let i = 1; i <= 5; i++) {
@@ -157,15 +171,13 @@ export class WattpilotCard extends LitElement {
       if (!cfg) continue;
       
       const stateObj = this._getEntity(key);
-      if (!stateObj) continue;
-  
       const rawValue = this._getState(key);
       const val = this._formatValue(rawValue);
-      const iconColor = this._getIconColor(cfg, rawValue); // Pobieramy kolor ikon
+      const iconColor = this._getIconColor(cfg, rawValue); // Zastosowanie logiki kolorów
       
-      const unit = (typeof cfg === 'object' ? cfg.unit : undefined) || stateObj.attributes.unit_of_measurement || '';
-      const icon = (typeof cfg === 'object' ? cfg.icon : undefined) || stateObj.attributes.icon || 'mdi:dots-horizontal';
-  
+      const unit = (typeof cfg === 'object' ? cfg.unit : undefined) || stateObj?.attributes.unit_of_measurement || '';
+      const icon = (typeof cfg === 'object' ? cfg.icon : undefined) || stateObj?.attributes.icon || 'mdi:dots-horizontal';
+
       rows.push(html`
         <div class="data-row ${side}">
           ${side === 'left' 
@@ -236,26 +248,6 @@ export class WattpilotCard extends LitElement {
     });
   }
 
-  private _getIconColor(cfg: any, rawValue: any): string {
-    if (!cfg || !cfg.color_rules || rawValue === undefined || rawValue === null) {
-      return 'inherit'; // Domyślny kolor jeśli brak reguł
-    }
-  
-    const val = parseFloat(rawValue);
-    if (isNaN(val)) return 'inherit';
-  
-    // Sortujemy reguły od najmniejszej do największej wartości
-    const sortedRules = [...cfg.color_rules].sort((a, b) => a.value - b.value);
-    
-    let selectedColor = 'inherit';
-    for (const rule of sortedRules) {
-      if (val >= rule.value) {
-        selectedColor = rule.color;
-      }
-    }
-    return selectedColor;
-  }
-  
   protected render(): TemplateResult {
     if (!this.hass || !this.config) return html``;
 
@@ -263,7 +255,7 @@ export class WattpilotCard extends LitElement {
     const isCharging = status.includes('charging');
     const reason = this._getState('entity_reason');
     const mode = this._getState('entity_mode');
-    const soc = this._formatValue(this._getState('entity_soc'));
+    const soc = Math.max(0, Math.min(100, parseFloat(this._getState('entity_soc') || '0')));
     const socTarget = this._formatValue(this._getState('entity_target_soc') || '100');
     const range = this._getState('entity_range') || '--';
     const rangeTarget = this._getState('entity_max_range') !== undefined ? Math.round(parseFloat(this._getState('entity_max_range'))) : '--';
@@ -375,10 +367,10 @@ export class WattpilotCard extends LitElement {
             <div class="stat-item"><ha-icon icon="mdi:car-connected"></ha-icon> ${range}/${rangeTarget}km</div>
         </div>
 
-        <div class="charging-progress-area">
+        <div class="charging-progress-area ${isCharging ? 'charging' : ''}">
           <div class="progress-container">
-            <div class="progress-bar-gradient ${isCharging ? 'charging' : ''}" 
-                 style="clip-path: ${clipValue};">
+            <div class="progress-bar-gradient" style="clip-path: ${clipValue};">
+                <div class="shimmer-layer"></div>
             </div>
           </div>
           
