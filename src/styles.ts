@@ -4,7 +4,7 @@ export const cardStyles = css`
   :host { display: block; }
   ha-card { padding: 4px 12px 12px 12px; background: #1c1c1c; color: white; overflow: hidden; }
   .card-header { display: flex; justify-content: space-between; margin-top: -12px; margin-bottom: -2px; height: 32px; align-items: center;  }
-  .reason-badge { border: 1px solid #333; padding: 1px 8px; border-radius: 12px; color: #666; font-size: 10px; }
+  .reason-badge { border: 1px solid #333; padding: 1px 8px; border-radius: 12px; color: #888; font-size: 10px; }
   .status-badge { border: 1px solid #03a9f4; color: #03a9f4; padding: 1px 8px; border-radius: 12px; font-weight: bold; font-size: 10px; }
   
   /* Dodatkowa klasa dla statusu ładującego */
@@ -56,7 +56,7 @@ export const cardStyles = css`
  
   .time-left-text { text-align: center; font-size: 11px; color: #03a9f4; margin-top: 4px; font-weight: 500; }
 
-  .settings-area { border-top: 1px solid #333; padding-top: 12px; margin-top: 8px; display: flex; flex-direction: column; gap: 12px; }
+  .settings-area select { width: 100%; max-width: 150px; font-size: 11px; padding: 2px; }
   .settings-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #555; }
   .header-icons { display: flex; gap: 12px; color: #888; }
   .header-icons ha-icon { cursor: pointer; transition: color 0.2s; }
@@ -67,9 +67,10 @@ export const cardStyles = css`
   .chip { background: #333; padding: 4px 12px; border-radius: 12px; font-size: 11px; cursor: pointer; transition: background 0.2s; }
   .chip.active { background: #03a9f4; font-weight: bold; color: white;}
   
-  .slider-row { display: flex; align-items: center; gap: 12px; }
+  .slider-row { display: flex; align-items: center; gap: 8px; width: 100%; }
   .slider-label { font-size: 14px; color: #ccc; min-width: 90px; }
-  input[type=range] { flex: 1; accent-color: #03a9f4; }
+  select, input { max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; }
+  input[type=range] { flex: 1; min-width: 0; }
   .amp-box { font-weight: bold; font-size: 14px; min-width: 35px; text-align: right; }
 
   .sub-panel { background: #262626; border-radius: 8px; padding: 12px; margin-top: 12px; font-size: 12px; }
