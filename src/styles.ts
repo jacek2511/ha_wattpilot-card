@@ -143,7 +143,7 @@ export const cardStyles = css`
   }
   
   .charging .marching-arrows::before {
-    animation: march 2s linear infinite;
+    animation: march 4s linear infinite;
   }
   
   /* Definicja ruchu strzałek */
