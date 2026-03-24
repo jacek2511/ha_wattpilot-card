@@ -360,9 +360,6 @@ export class WattpilotCard extends LitElement {
           ${this._renderSideColumn('right')}
         </div>
           
-          ${this._renderSideColumn('right')}
-        </div>
-
         <div class="soc-range-row">
             <div class="stat-item"><ha-icon icon="mdi:battery-high"></ha-icon> ${soc}/${socTarget}%</div>
             <div class="stat-item"><ha-icon icon="mdi:car-connected"></ha-icon> ${range}/${rangeTarget}km</div>
