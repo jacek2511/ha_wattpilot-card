@@ -14,11 +14,8 @@ export const cardStyles = css`
   .modes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; flex: 1; }
   .actions-grid { display: flex; flex-direction: column; gap: 4px; width: 80px; }
 
-  .mode-btn { 
-    background: #262626; border-radius: 6px; display: flex; flex-direction: column; 
-    align-items: center; justify-content: center; padding: 2px; cursor: pointer; height: 44px;
-  }
-  .mode-btn.active { border-color: #03a9f4; background: rgba(3,169,244,0.1); border-width: 1px; border-style: solid; }
+  /* --- BAZA PRZYCISKU --- */
+  .mode-btn { background: #262626; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; cursor: pointer; height: 44px; border: 1px solid transparent; transition: background 0.2s, border-color 0.2s; }  .mode-btn.active { border-color: #03a9f4; background: rgba(3,169,244,0.1); border-width: 1px; border-style: solid; }
   .mode-btn ha-icon { --mdc-icon-size: 20px; }
   .mode-btn span { font-size: 10px; }
 
@@ -27,10 +24,19 @@ export const cardStyles = css`
   .start { background: #4caf50; color: black; }
   .stop { background: #f44336; color: white; height: 44px; }
 
-  .mode-btn.active.standard { border-color: #ff9800 !important; background: rgba(255, 152, 0, 0.1) !important; color: #ff9800 !important; }
-  .mode-btn.active.standard ha-icon { color: #ff9800 !important; }
-  .mode-btn.active.eco { border-color: #4caf50 !important; background: rgba(76, 175, 80, 0.1) !important; color: #4caf50 !important; }
-  .mode-btn.active.eco ha-icon { color: #4caf50 !important; }  
+  /* --- STYLE PODSTAWOWE (Stałe kolory) --- */
+  .mode-btn.standard { color: #ff9800 !important; }
+  .mode-btn.standard ha-icon { color: #ff9800 !important; }
+  .mode-btn.eco { color: #4caf50 !important; }
+  .mode-btn.eco ha-icon { color: #4caf50 !important; }
+  .mode-btn.next-trip { color: #03a9f4 !important; }
+  .mode-btn.next-trip ha-icon { color: #03a9f4 !important; }
+  
+  /* --- STYLE AKTYWNE (Obramowanie i tło) --- */
+  .mode-btn.active.standard { border: 1px solid #ff9800 !important; background: rgba(255, 152, 0, 0.1) !important; }
+  .mode-btn.active.eco { border: 1px solid #4caf50 !important; background: rgba(76, 175, 80, 0.1) !important; }
+  .mode-btn.active.next-trip { border: 1px solid #03a9f4 !important; background: rgba(3, 169, 244, 0.1) !important; }
+  
 
   /* ŚRODEK */
   .visual-center { display: flex; justify-content: space-between; align-items: center; height: 110px; margin-top: 18px; }
@@ -73,7 +79,7 @@ export const cardStyles = css`
   .active-icon { color: #03a9f4 !important; }
   .phase-line { font-size: 11px; margin-bottom: 4px; font-family: monospace; white-space: nowrap; color: #888;}
   
-  .charging-progress-area { position: relative; margin: 15px 0; padding-bottom: 5px; }
+  .charging-progress-area { position: relative; margin: 2px 0; padding-bottom: 5px; }
   .time-left-display { position: absolute; width: 100%; text-align: center; font-size: 0.75em; color: var(--secondary-text-color); bottom: -14px; left: 0; }  
   .progress-container { height: 12px; background: rgba(255, 255, 255, 0.1); border-radius: 6px; overflow: hidden; position: relative; }
   .progress-bar-gradient { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(90deg, #ff4d4d 0%, #fbff00 50%, #4caf50 100%); transition: clip-path 0.8s cubic-bezier(0.22, 1, 0.36, 1); z-index: 1; } 
