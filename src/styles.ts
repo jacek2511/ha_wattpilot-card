@@ -69,15 +69,31 @@ export const cardStyles = css`
   .active-icon { color: #03a9f4 !important; }
   .phase-line { font-size: 11px; margin-bottom: 4px; font-family: monospace; white-space: nowrap; color: #888;}
 
+  .charging-progress-area {
+      position: relative;
+      margin: 10px 0 20px 0; /* Większy margines na dole, by zmieścić napis */
+  }
+
   /* Styl dla kontenera - musi być 'relative' i mieć 'overflow: hidden' */
   .progress-container {
-      position: relative;
       height: 12px;
       background: rgba(255, 255, 255, 0.1);
       border-radius: 6px;
-      overflow: hidden; /* To jest krytyczne! */
+      overflow: hidden;
+      position: relative;
   }
-  
+
+  .time-left-display {
+      position: absolute;
+      top: 100%; /* Zaraz pod paskiem */
+      left: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 0.75em;
+      color: var(--secondary-text-color);
+      margin-top: 2px;
+  }
+
   /* Warstwa animowana */
   .shimmer-layer {
       display: none; /* Domyślnie ukryta */
