@@ -289,8 +289,8 @@ export class WattpilotCard extends LitElement {
             <div class="header-icons">
               <ha-icon 
                 icon="mdi:information-outline" 
-                class="${this._activePanel === 'info-panel' ? 'active-icon' : ''}"
-                @click=${() => this._togglePanel('info-panel')} title="Info">
+                class="${this._activePanel === 'charger-info-panel' ? 'active-icon' : ''}"
+                @click=${() => this._togglePanel('charger-info-panel')} title="Info">
               </ha-icon>
               <ha-icon 
                 icon="mdi:wifi-cog" 
