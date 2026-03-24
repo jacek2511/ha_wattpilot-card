@@ -331,13 +331,55 @@ export class WattpilotCard extends LitElement {
           <div id="settings-panel" class="sub-panel" style="display: ${this._activePanel === 'settings-panel' ? 'block' : 'none'};">
              <div class="divider"></div>
              <div class="section-title">SYSTEM SETTINGS</div>
+
              <div class="control-row">
                 <span class="control-label">Lock Level</span>
-                <span>(Brak encji - do oprogramowania)</span>
+                <select class="custom-select" 
+                  .value=${this._getState('entity_lock') || ''}
+                  @change=${(e: any) => this._callService('select', 'select_option', 'entity_lock', { option: e.target.value })}>
+                  ${this._getEntity('entity_lock')?.attributes?.options?.map((opt: string) => html`<option value="${opt}">${opt}</option>`) || html`<option value="">--</option>`}
+                </select>
              </div>
-             <button @click=${() => this._callAction('entity_restart')} style="width:100%; padding:8px; border-radius:4px; border:1px solid #ef4444; background:transparent; color:#ef4444; cursor:pointer; font-weight:bold; margin-top:5px;">RESTART WATTPILOT</button>
-          </div>
 
+             <div class="control-row">
+                <span class="control-label">Phase Switch Delay</span>
+                <div class="right-controls">
+                   <input type="number" step="1" class="custom-input" style="width: 60px; text-align: right;"
+                     .value=${msToMin(this._getState('entity_phase_delay') || 0)}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_phase_delay', { value: minToMs(parseFloat(e.target.value)) })}>
+                   <span class="val-txt" style="margin-left: 5px;">min</span>
+                </div>
+             </div>
+
+             <div class="control-row">
+                <span class="control-label">PV Battery Threshold</span>
+                <div class="right-controls">
+                   <input type="number" step="0.1" class="custom-input" style="width: 60px; text-align: right;"
+                     .value=${wToKw(this._getState('entity_pv_threshold') || 0)}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_pv_threshold', { value: kwToW(parseFloat(e.target.value)) })}>
+                   <span class="val-txt" style="margin-left: 5px;">kW</span>
+                </div>
+             </div>
+
+             <div class="divider"></div>
+
+             <div class="control-row">
+                <span class="control-label">Ground Check</span>
+                <ha-switch 
+                  .checked=${this._getState('entity_ground_check') === 'on'}
+                  @change=${(e: any) => this._callService('switch', e.target.checked ? 'turn_on' : 'turn_off', 'entity_ground_check')}>
+                </ha-switch>
+             </div>
+
+             <div class="divider"></div>
+
+             <button @click=${() => this._callAction('entity_restart')} 
+                     style="width:100%; padding:10px; border-radius:6px; border:1px solid #ef4444; background: rgba(239, 68, 68, 0.1); color:#ef4444; cursor:pointer; font-weight:bold; margin-top:10px; transition: 0.2s;">
+                <ha-icon icon="mdi:restart" style="--mdc-icon-size: 18px; vertical-align: middle;"></ha-icon>
+                RESTART WATTPILOT
+             </button>
+          </div>
+          
           <div id="wifi-panel" class="sub-panel" style="display: ${this._activePanel === 'wifi-panel' ? 'block' : 'none'};">
             <div class="divider"></div>
             <div class="section-title">WIFI CONFIGURATION</div>
@@ -456,16 +498,16 @@ export class WattpilotCard extends LitElement {
                 </ha-switch>
              </div>
 
-             <div class="control-row">
+            <div class="control-row">
                 <span class="control-label">Start Charging At</span>
                 <div class="right-controls">
                    <input type="number" step="0.1" class="custom-input" style="width: 70px; text-align: right;"
-                     .value=${this._getState('entity_start_at') || 0}
-                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_start_at', { value: parseFloat(e.target.value) })}>
+                     .value=${wToKw(this._getState('entity_start_at') || 0)}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_start_at', { value: kwToW(parseFloat(e.target.value)) })}>
                    <span class="val-txt" style="margin-left: 5px;">kW</span>
                 </div>
              </div>
-
+             
              <div class="control-row">
                 <span class="control-label">Use aWATTar</span>
                 <ha-switch 
@@ -474,35 +516,38 @@ export class WattpilotCard extends LitElement {
                 </ha-switch>
              </div>
 
-             <div class="control-row">
+            <div class="control-row">
                 <span class="control-label">Max Price</span>
                 <div class="right-controls">
                    <input type="number" step="0.01" class="custom-input" style="width: 70px; text-align: right;"
-                     .value=${this._getState('entity_max_price') || 0}
-                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_max_price', { value: parseFloat(e.target.value) })}>
+                     .value=${centsToEuro(this._getState('entity_max_price') || 0)}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_max_price', { value: euroToCents(parseFloat(e.target.value)) })}>
                    <span class="val-txt" style="margin-left: 5px;">€</span>
                 </div>
              </div>
-
+             
              <div class="divider"></div>
 
-             <div class="control-row">
+            <div class="control-row">
                 <span class="control-label">Next Trip Power</span>
                 <div class="right-controls">
                    <input type="number" step="0.1" class="custom-input" style="width: 70px; text-align: right;"
-                     .value=${this._getState('entity_next_trip_pwr') || 0}
-                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_next_trip_pwr', { value: parseFloat(e.target.value) })}>
+                     .value=${wToKw(this._getState('entity_next_trip_pwr') || 0)}
+                     @change=${(e: any) => this._callService('number', 'set_value', 'entity_next_trip_pwr', { value: kwToW(parseFloat(e.target.value)) })}>
                    <span class="val-txt" style="margin-left: 5px;">kW</span>
                 </div>
              </div>
-
-             <div class="control-row">
-                <span class="control-label">Next Trip Time</span>
-                <input type="time" class="custom-input" 
-                  .value=${(this._getState('entity_next_trip_timing') || '00:00:00').substring(0,5)}
-                  @change=${(e: any) => this._callService('input_datetime', 'set_datetime', 'entity_next_trip_timing', { time: e.target.value })}>
-             </div>
-
+             
+            <div class="control-row">
+              <span class="control-label">Next Trip Duration</span>
+              <div class="right-controls">
+                <input type="number" class="custom-input" style="width: 60px;"
+                  .value=${msToMin(this._getState('entity_next_trip_duration') || 0)}
+                  @change=${(e: any) => this._callService('number', 'set_value', 'entity_next_trip_duration', { value: minToMs(parseFloat(e.target.value)) })}>
+                <span class="val-txt">min</span>
+              </div>
+            </div>
+            
              <div class="control-row">
                 <span class="control-label">Remain in Eco Mode</span>
                 <ha-switch 
