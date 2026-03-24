@@ -540,7 +540,7 @@ export class WattpilotCard extends LitElement {
                 </span>
              </div>
 
-             ${this._getState('entity_fw_current') !== this._getState('entity_fw_latest') ? html`
+            ${this._getState('entity_fw_current') !== this._getState('entity_fw_latest') ? html`
                 <button @click=${() => {
                     if(confirm('Czy na pewno chcesz rozpocząć aktualizację oprogramowania Wattpilota?')) {
                         this._callAction('entity_start_update');
@@ -550,14 +550,14 @@ export class WattpilotCard extends LitElement {
                    INSTALL UPDATE
                 </button>
                 
-                ${this._getState('entity_update_progress') > 0 ? html`
+                ${Number(this._getState('entity_update_progress') || 0) > 0 ? html`
                    <div style="width: 100%; background: #333; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 5px;">
                       <div style="width: ${this._getState('entity_update_progress')}%; background: #4da3ff; height: 100%; transition: width 0.5s ease-in-out;"></div>
                    </div>
                    <div style="text-align: center; font-size: 0.7em; margin-top: 5px; color: #4da3ff;">Update Progress: ${this._getState('entity_update_progress')}%</div>
                 ` : ''}
              ` : ''}
-
+             
           </div>
           
           <div id="charge-settings-panel" class="sub-panel" style="display: ${this._activePanel === 'charge-settings-panel' ? 'block' : 'none'};">
