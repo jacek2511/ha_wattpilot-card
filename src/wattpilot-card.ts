@@ -224,10 +224,18 @@ export class WattpilotCard extends LitElement {
     const powerEnt = this._getEntity('entity_power');
     const attr = powerEnt?.attributes || {};
     const internalError = this._getState('entity_internal_error');
-    const updateEnt = this._getState('entity_firmware_update');
-    const isUpdateAvailable = updateEnt 
-      ? updateEnt.attributes.installed_version !== updateEnt.attributes.latest_version
-      : false;
+    // Pobranie encji z konfiguracji
+    const updateEnt = this._getEntity('entity_firmware_update');
+    
+    // Bezpieczne wyciągnięcie atrybutów (jeśli updateEnt nie istnieje, użyje pustego obiektu)
+    const updateAttrs = updateEnt?.attributes || {};
+    
+    // Logika statusu
+    const isUpdateAvailable = updateEnt?.state === 'on';
+    const inProgress = updateAttrs.in_progress === true;
+    const progressPct = updateAttrs.update_percentage || 0;
+    const installedV = updateAttrs.installed_version || '--';
+    const latestV = updateAttrs.latest_version || '--';
     const hasError = internalError !== 'None' && internalError !== '--' && internalError !== 'unknown';
     
     return html`
@@ -533,34 +541,31 @@ export class WattpilotCard extends LitElement {
              </div>
 
             <div class="control-row">
-               <span class="control-label">Firmware Update</span>
-               <span class="val-txt" style="color: ${isUpdateAvailable ? '#4da3ff' : 'inherit'};">
-                  ${isUpdateAvailable ? 'Update Available' : 'Up to date'}
-               </span>
-            </div>
-            
-            <div class="control-row" style="margin-top: -5px; margin-bottom: 15px;">
-               <span class="control-label" style="font-size: 0.75em; opacity: 0.5;">Firmware Version (installed/latest)</span>
-               <span class="val-txt" style="font-size: 0.75em; opacity: 0.7;">
-                  ${updateEnt?.attributes?.installed_version || '--'} / ${updateEnt?.attributes?.latest_version || '--'}
-               </span>
-            </div>
-            
-            ${isUpdateAvailable ? html`
-               <button @click=${() => confirm('Start Update?') ? this._callAction('entity_start_update') : null} 
-                       style="width:100%; padding:10px; border-radius:6px; border:1px solid #4da3ff; background: rgba(77, 163, 255, 0.1); color:#4da3ff; cursor:pointer; font-weight:bold; margin-bottom: 10px;">
-                  INSTALL UPDATE
-               </button>
-            ` : ''}
-            
-            ${updateEnt?.attributes?.in_progress ? html`
-               <div style="width: 100%; background: #333; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 5px;">
-                  <div style="width: ${updateEnt.attributes.update_percentage || 0}%; background: #4da3ff; height: 100%; transition: width 0.5s;"></div>
-               </div>
-               <div style="text-align: center; font-size: 0.7em; margin-top: 5px; color: #4da3ff;">
-                  Updating: ${updateEnt.attributes.update_percentage}%
-               </div>
-            ` : ''}
+                <span class="control-label">Firmware Update</span>
+                <span class="val-txt" style="color: ${isUpdateAvailable ? '#4da3ff' : 'inherit'};">
+                   ${inProgress ? `Updating: ${progressPct}%` : (isUpdateAvailable ? 'Update Available' : 'Up to date')}
+                </span>
+             </div>
+
+             <div class="control-row" style="margin-top: -5px; margin-bottom: 15px;">
+                <span class="control-label" style="font-size: 0.75em; opacity: 0.5;">Version (installed / latest)</span>
+                <span class="val-txt" style="font-size: 0.75em; opacity: 0.7;">
+                   ${installedV} / ${latestV}
+                </span>
+             </div>
+
+             ${isUpdateAvailable && !inProgress ? html`
+                <button @click=${() => confirm('Start Update?') ? this._callAction('entity_start_update') : null} 
+                        style="width:100%; padding:10px; border-radius:6px; border:1px solid #4da3ff; background: rgba(77, 163, 255, 0.1); color:#4da3ff; cursor:pointer; font-weight:bold; margin-bottom: 10px;">
+                   INSTALL UPDATE
+                </button>
+             ` : ''}
+             
+             ${inProgress ? html`
+                <div style="width: 100%; background: #333; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 5px; margin-bottom: 10px;">
+                   <div style="width: ${progressPct}%; background: #4da3ff; height: 100%; transition: width 0.5s;"></div>
+                </div>
+             ` : ''}
           </div>
           
           <div id="charge-settings-panel" class="sub-panel" style="display: ${this._activePanel === 'charge-settings-panel' ? 'block' : 'none'};">
