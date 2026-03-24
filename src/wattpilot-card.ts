@@ -253,6 +253,7 @@ export class WattpilotCard extends LitElement {
     const now = new Date();
     const end = chargeEnd ? new Date(chargeEnd) : null;
 
+    const clipValue = `inset(0 ${100 - soc}% 0 0)`;
     // Obliczamy różnicę w milisekundach i zamieniamy na HH:MM
     const diff = end && end > now ? end.getTime() - now.getTime() : 0;
     const h = Math.floor(diff / 3600000);
@@ -354,17 +355,20 @@ export class WattpilotCard extends LitElement {
             <div class="stat-item"><ha-icon icon="mdi:car-connected"></ha-icon> ${range}/${rangeTarget}km</div>
         </div>
 
-        <div class="charging-progress-area" style="padding: 0 15px;">
+        <div class="charging-progress-area">
           <div class="progress-container">
-            <div class="progress-bar-fill ${isCharging ? 'charging-animation' : ''}" style="width: ${soc}%"></div>
+            <div class="progress-bar-gradient ${isCharging ? 'charging' : ''}" 
+                 style="clip-path: ${clipValue};">
+            </div>
           </div>
+          
           ${timeLeftStr ? html`
               <div style="text-align: center; font-size: 0.85em; margin-top: 4px; color: var(--secondary-text-color); font-weight: 500;">
                   ${timeLeftStr}
               </div>
           ` : ''}
         </div>
-        
+  
         <div class="power-row-inline">
           <span class="main-power">${power} kW</span>
           <span class="sub-power">${totalAmps} A &nbsp;|&nbsp; ${sessionEnergy} kWh &nbsp;|&nbsp; ${phaseStatus}</span>
