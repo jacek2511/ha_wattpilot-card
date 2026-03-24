@@ -341,10 +341,13 @@ export class WattpilotCard extends LitElement {
           
           <div class="actions-grid">
             ${this._isCharging 
-              ? html`<div class="action-btn stop" @click=${() => this._callAction('entity_stop')}>STOP</div>`
-              : html`
+              ? html`
+                <div class="action-btn stop" @click=${() => this._callAction('entity_stop')}>STOP</div>
                 <div class="action-btn force" @click=${() => this._callAction('entity_force')}>FORCE</div>
+              `
+              : html`
                 <div class="action-btn start" @click=${() => this._callAction('entity_start')}>START</div>
+                <div class="action-btn force" @click=${() => this._callAction('entity_force')}>FORCE</div>
               `}
           </div>
         </div>
