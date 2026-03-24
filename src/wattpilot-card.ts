@@ -231,7 +231,7 @@ export class WattpilotCard extends LitElement {
       }
 
       return html`
-        <div class="${ledClass}" style="transform: rotate(${angle}deg) translate(23px); opacity: ${opacity};"></div>
+        <div class="${ledClass}" style="transform: rotate(${angle}deg) translate(24px); opacity: ${opacity};"></div>
       `;
     });
   }
