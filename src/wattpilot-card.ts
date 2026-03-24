@@ -176,31 +176,66 @@ export class WattpilotCard extends LitElement {
     }
     return html`<div class="side-column">${rows}</div>`;
   }
+  
   private _renderLedRing(): TemplateResult[] {
-    const activeAmps = Math.min(32, this._currentAmps);
     const status = (this._getState('entity_status') || '').toLowerCase();
+    const isCharging = status.includes('charging');
+    const reason = this._getState('entity_reason');
+    const mode = this._getState('entity_mode');
+    const activeAmps = Math.min(32, this._currentAmps);
+    
+    // Pobieramy fazy z Twoich obliczeń (L1+L2+L3)
+    const powerEnt = this._getEntity('entity_power');
+    const attr = powerEnt?.attributes || {};
+    const activePhases = [attr.L1_Ampere, attr.L2_Ampere, attr.L3_Ampere].filter(a => parseFloat(a) > 0).length;
 
     return Array.from({ length: 32 }).map((_, i) => {
       const angle = (i / 32) * 360 - 90;
       let ledClass = 'led';
-      
-      if (i < activeAmps) {
-        if (this._isCharging) {
-          ledClass += ' blue';
-          if (i === this._animIdx) ledClass += ' active-anim';
-        } else {
-          if (status.includes('wait')) ledClass += ' yellow';
+      let opacity = "1";
+
+      // 1. Tryby specjalne (Eco/Next Trip) gdy nie ładuje
+      if (!isCharging) {
+        if (i === 0 && mode === 'Eco') ledClass += ' white';
+        if (i === 1 && mode === 'Next Trip') ledClass += ' white';
+      }
+
+      // 2. Logika podczas ładowania (Animacja "Ogona")
+      if (isCharging) {
+        const tailLength = 4;
+        const phaseOffsets = activePhases === 3 ? [0, 10, 20] : [0];
+        let isTail = false;
+
+        for (const offset of phaseOffsets) {
+          const head = (this._animIdx + offset) % 32;
+          for (let t = 0; t < tailLength; t++) {
+            const tailPos = (head - t + 32) % 32;
+            if (tailPos === i && i < activeAmps) {
+              isTail = true;
+              ledClass += ' blue';
+              if (t > 0) opacity = (0.8 - (t / tailLength) * 0.7).toString();
+            }
+          }
+        }
+        if (!isTail) opacity = "0.1"; // Przyciemnienie reszty
+      } else {
+        // 3. Statusy postoju
+        if (i < activeAmps) {
+          if (reason === 'NotChargingBecauseFallbackAwattar') ledClass += ' blue-blink';
+          else if (status.includes('wait')) ledClass += ' yellow';
           else if (status.includes('complete')) ledClass += ' green';
-          else ledClass += ' blue default-on';
+          else ledClass += ' blue';
+        } else {
+          opacity = "0.1";
         }
       }
-      
+
       return html`
-        <div class="${ledClass}" style="transform: rotate(${angle}deg) translate(23px)"></div>
+        <div class="${ledClass}" style="transform: rotate(${angle}deg) translate(23px); opacity: ${opacity};"></div>
       `;
     });
   }
-
+  
   protected render(): TemplateResult {
     if (!this.hass || !this.config) return html``;
 
@@ -317,15 +352,17 @@ export class WattpilotCard extends LitElement {
             <div class="stat-item"><ha-icon icon="mdi:car-connected"></ha-icon> ${range}/${rangeTarget}km</div>
         </div>
 
-        <div class="charging-progress-area">
-          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${soc}%"></div></div>
+        <div class="charging-progress-area" style="padding: 0 15px;">
+          <div class="progress-container">
+            <div class="progress-bar-fill ${isCharging ? 'charging-animation' : ''}" style="width: ${soc}%"></div>
+          </div>
           ${timeLeftStr ? html`
-              <div style="text-align: center; font-size: 0.85em; margin-top: 2px; color: var(--secondary-text-color); font-weight: 500; letter-spacing: 0.5px;">
+              <div style="text-align: center; font-size: 0.85em; margin-top: 4px; color: var(--secondary-text-color); font-weight: 500;">
                   ${timeLeftStr}
               </div>
           ` : ''}
         </div>
-  
+        
         <div class="power-row-inline">
           <span class="main-power">${power} kW</span>
           <span class="sub-power">${totalAmps} A &nbsp;|&nbsp; ${sessionEnergy} kWh &nbsp;|&nbsp; ${phaseStatus}</span>
