@@ -351,12 +351,14 @@ export class WattpilotCard extends LitElement {
 
         <div class="visual-center">
           ${this._renderSideColumn('left')}
-          <div class="led-wrapper">
+          
+          <div class="device-container">
+            <img src="${WATT_IMG}" class="device-img" alt="Wattpilot">
             <div id="led-ring">
               ${this._renderLedRing()}
             </div>
-            <img src="${WATT_IMG}" class="device-img" alt="Wattpilot">
           </div>
+          
           ${this._renderSideColumn('right')}
         </div>
 
