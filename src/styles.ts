@@ -33,8 +33,10 @@ export const cardStyles = css`
   .data-row { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #ccc; white-space: nowrap; }
   .data-row.right { justify-content: flex-end; text-align: right; }
   .data-row ha-icon { --mdc-icon-size: 16px; color: #03a9f4; }
-
-  .device-img { width: 71px; z-index: 2; position: relative; }
+  
+  .device-container { position: relative; width: 71px; margin: 0 auto; display: flex; justify-content: center; }
+  .device-img { width: 100%; z-index: 1; display: block; }
+  #led-ring { position: absolute; top: 68%; left: 50%; transform: translate(-50%, -50%); z-index: 2; width: 1px; height: 1px; pointer-events: none; }
   
   .soc-range-row { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-top: 2px; margin-bottom: 4px; }
   .stat-item { display: flex; align-items: center; gap: 4px; }
@@ -149,7 +151,6 @@ export const cardStyles = css`
     transition: color 0.3s ease;
   } 
   
-  #led-ring { position: absolute; width: 100%; height: 100%; top: 77px; left: 48px; z-index: 3; pointer-events: none; }
   .led-wrapper { position: relative; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; }
   .led.default-on { opacity: 1; }
   .led.active-anim { opacity: 1; box-shadow: 0 0 8px #fff; background: #fff; }
