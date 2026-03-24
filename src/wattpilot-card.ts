@@ -223,6 +223,27 @@ export class WattpilotCard extends LitElement {
     
     const powerEnt = this._getEntity('entity_power');
     const attr = powerEnt?.attributes || {};
+
+    const ampL1 = parseFloat(attr['L1_Ampere'] || '0');
+    const ampL2 = parseFloat(attr['L2_Ampere'] || '0');
+    const ampL3 = parseFloat(attr['L3_Ampere'] || '0');
+
+    const totalAmps = (ampL1 + ampL2 + ampL3).toFixed(1);
+
+    let phaseStatus = "Auto";
+    // Liczymy ile faz ma pobór powyżej 0
+    const activePhasesCount = [ampL1, ampL2, ampL3].filter(amp => amp > 0).length;
+
+    if (activePhasesCount === 1) {
+      phaseStatus = "1-Phase";
+    } else if (activePhasesCount === 3) {
+      phaseStatus = "3-Phases";
+    } else if (activePhasesCount === 0) {
+      phaseStatus = "Auto";
+    } else if (activePhasesCount === 2) {
+      // Opcjonalnie na wypadek gdyby wykryło dokładnie 2 fazy
+      phaseStatus = "2-Phases";
+    }
     const internalError = this._getState('entity_internal_error');
     // Pobranie encji z konfiguracji
     const updateEnt = this._getEntity('entity_firmware_update');
@@ -291,7 +312,7 @@ export class WattpilotCard extends LitElement {
 
         <div class="power-row-inline">
           <span class="main-power">${power} kW</span>
-          <span class="sub-power">${this._currentAmps}A &nbsp;|&nbsp; ${sessionEnergy}kWh &nbsp;|&nbsp; ${phases}φ</span>
+          <span class="sub-power">${totalAmps} A &nbsp;|&nbsp; ${sessionEnergy} kWh &nbsp;|&nbsp; ${phaseStatus}</span>
         </div>
 
         <div class="settings-area">
@@ -503,7 +524,7 @@ export class WattpilotCard extends LitElement {
              
              <div class="control-row">
                 <span class="control-label">Total Charged</span>
-                <span class="val-txt">${Number(this._getState('entity_total_charged') || 0).toFixed(1)} kWh</span>
+                <span class="val-txt">${Number(this._getState('entity_total_charged') || 0).toFixed(0)} kWh</span>
              </div>
 
              <div class="divider"></div>
@@ -572,13 +593,13 @@ export class WattpilotCard extends LitElement {
              <div class="divider"></div>
              <div class="section-title">BATTERY & LIMITS</div>
              
-             <div class="control-row">
+              <div class="control-row">
                 <span class="control-label">Target SoC</span>
                 <div class="right-controls">
                    <input type="range" min="0" max="100"
                      .value=${this._getState('entity_target_soc') || 0}
                      @change=${(e: any) => this._callService('input_number', 'set_value', 'entity_target_soc', { value: parseFloat(e.target.value) })}>
-                   <span class="val-txt">${this._getState('entity_target_soc') || '--'}%</span>
+                   <span class="val-txt">${this._getState('entity_target_soc') ? Math.round(parseFloat(this._getState('entity_target_soc'))) : '--'}%</span>
                 </div>
              </div>
              
@@ -588,10 +609,10 @@ export class WattpilotCard extends LitElement {
                    <input type="range" min="0" max="100"
                      .value=${this._getState('entity_min_soc') || 0}
                      @change=${(e: any) => this._callService('input_number', 'set_value', 'entity_min_soc', { value: parseFloat(e.target.value) })}>
-                   <span class="val-txt">${this._getState('entity_min_soc') || '--'}%</span>
+                   <span class="val-txt">${this._getState('entity_min_soc') ? Math.round(parseFloat(this._getState('entity_min_soc'))) : '--'}%</span>
                 </div>
              </div>
-
+             
              <div class="divider"></div>
 
              <div class="control-row">
