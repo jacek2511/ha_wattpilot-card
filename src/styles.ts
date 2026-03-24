@@ -22,7 +22,7 @@ export const cardStyles = css`
   .action-btn { height: 20px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-top: 0px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
   .force { background: #ff9800; color: black; }
   .start { background: #4caf50; color: black; }
-  .stop { background: #f44336; color: white; height: 44px; }
+  .stop { background: #f44336; color: white; }
 
   /* --- STYLE PODSTAWOWE (Stałe kolory) --- */
   .mode-btn.standard { color: #ff9800 !important; }
