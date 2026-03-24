@@ -370,7 +370,7 @@ export class WattpilotCard extends LitElement {
         <div class="charging-progress-area ${this._isCharging ? 'charging' : ''}">
           <div class="progress-container">
             <div class="progress-bar-gradient" style="clip-path: ${clipValue};">
-                <div class="shimmer-layer"></div>
+                <div class="marching-arrows"></div>
             </div>
           </div>
           ${timeLeftStr ? html`<div class="time-left-display">${timeLeftStr}</div>` : ''}
