@@ -3,7 +3,7 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/jacek2511/wattpilot-card?style=flat-square)](https://github.com/YOUR_USERNAME/wattpilot-card/releases)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange?style=flat-square)](https://hacs.xyz/)
-[![Node.js 24](https://img.shields.io/badge/Node.js-24-green?style=flat-square&logo=node.js)](https://nodejs.org/)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/jacek2511/wattpilot-card/total?style=flat-square&color=blue)](https://github.com/jacek2511/wattpilot-card/releases)
 [![License](https://img.shields.io/github/license/jacek2511/wattpilot-card?style=flat-square)](LICENSE)
 
 The **Fronius Wattpilot Card** provides a sleek, interactive interface to monitor and control your electric vehicle charging. It mimics the physical LED ring of the Wattpilot while adding deep integration for PV surplus, smart pricing, and vehicle battery status.
