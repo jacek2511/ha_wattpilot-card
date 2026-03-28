@@ -1,10 +1,10 @@
 # ⚡ Fronius Wattpilot Card
 **The most advanced and customizable charging card for Fronius Wattpilot in Home Assistant.**
 
-[![GitHub Release](https://img.shields.io/github/v/release/YOUR_USERNAME/wattpilot-card?style=flat-square)](https://github.com/YOUR_USERNAME/wattpilot-card/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/jacek2511/wattpilot-card?style=flat-square)](https://github.com/YOUR_USERNAME/wattpilot-card/releases)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange?style=flat-square)](https://hacs.xyz/)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24-green?style=flat-square&logo=node.js)](https://nodejs.org/)
-[![License](https://img.shields.io/github/license/YOUR_USERNAME/wattpilot-card?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/github/license/jacek2511/wattpilot-card?style=flat-square)](LICENSE)
 
 The **Fronius Wattpilot Card** provides a sleek, interactive interface to monitor and control your electric vehicle charging. It mimics the physical LED ring of the Wattpilot while adding deep integration for PV surplus, smart pricing, and vehicle battery status.
 
@@ -36,7 +36,7 @@ This card is a frontend representation and **requires** the following integratio
 6.  Find **Wattpilot Card** in the list and click **Download**.
 
 ### 2. Manual Installation
-1.  Download the `wattpilot-card.js.gz` from the [Latest Release](https://github.com/YOUR_USERNAME/wattpilot-card/releases).
+1.  Download the `wattpilot-card.js.gz` from the [Latest Release](https://github.com/jacek2511/wattpilot-card/releases).
 2.  Extract the `wattpilot-card.js` and place it in your `/config/www/community/wattpilot-card/` folder.
 3.  Add the following resource to your Dashboard:
     * **URL:** `/local/community/wattpilot-card/wattpilot-card.js`
