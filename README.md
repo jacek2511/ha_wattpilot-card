@@ -10,12 +10,18 @@ The **Fronius Wattpilot Card** provides a sleek, interactive interface to monito
 
 ---
 
+## ⚠️ Prerequisites / Wymagania
+This card is a frontend representation and **requires** the following integration to be installed and configured in Home Assistant:
+
+* **[Fronius Wattpilot-HA](https://github.com/mk-maddin/wattpilot-HA)** by *mk-maddin*. 
+    *(Without this integration, the card will not have access to the necessary sensors and controls).*
+
+---
 ## ✨ Key Features
 * **Intuitive LED Ring**: Animated 32-LED ring reflecting real-time charging status, power levels, and phase count.
 * **Dual Sidebar Columns**: Up to 10 customizable slots (5 left, 5 right) for any HA entity with dynamic color rules.
 * **Smart Charging Integration**: One-tap access to Eco and Next Trip modes, PV surplus toggles, and price limits.
 * **Advanced UI Editor**: Full visual editor support for easy entity mapping without touching YAML.
-* **High Performance**: Built with TypeScript and Node.js 24, delivered as a lightweight Gzip-compressed module for instant loading.
 
 ---
 
