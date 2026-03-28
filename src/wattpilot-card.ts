@@ -104,11 +104,18 @@ export class WattpilotCard extends LitElement {
     return stateObj.state;
   }
   
-  private _formatValue(val: any): string {
+  private _formatValue(val: any, unit: string = ''): string {
     const num = parseFloat(val);
-    return isNaN(num) ? '--' : Math.round(num).toString();
+    if (isNaN(num)) return '--';
+  
+    const isHighPrecisionUnit = unit.toLowerCase().includes('kw');
+    if (isHighPrecisionUnit) {
+      return num.toFixed(1);
+    } else {
+      return Math.round(num).toString();
+    }
   }
-
+  
   // --- AKCJE I SERWISY ---
 
   private _setMode(mode: string) {
@@ -173,11 +180,11 @@ export class WattpilotCard extends LitElement {
       
       const stateObj = this._getEntity(key);
       const rawValue = this._getState(key);
-      const val = this._formatValue(rawValue);
-      const iconColor = this._getIconColor(cfg, rawValue); // Zastosowanie logiki kolorów
+      const iconColor = this._getIconColor(cfg, rawValue);
       
       const unit = (typeof cfg === 'object' ? cfg.unit : undefined) || stateObj?.attributes.unit_of_measurement || '';
       const icon = (typeof cfg === 'object' ? cfg.icon : undefined) || stateObj?.attributes.icon || 'mdi:dots-horizontal';
+      const val = this._formatValue(rawValue, unit);
 
       rows.push(html`
         <div class="data-row ${side}">
@@ -288,7 +295,7 @@ export class WattpilotCard extends LitElement {
     const reason = this._getState('entity_reason');
     const mode = this._getState('entity_mode');
     const soc = Math.max(0, Math.min(100, parseFloat(this._getState('entity_soc') || '0')));
-    const socTarget = this._formatValue(this._getState('entity_target_soc') || '100');
+    const socTarget = this._formatValue(this._getState('entity_target_soc') || '100', '%');
     const range = this._getState('entity_range') || '--';
     const rangeTarget = this._getState('entity_max_range') !== undefined ? Math.round(parseFloat(this._getState('entity_max_range'))) : '--';
     const power = parseFloat(this._getState('entity_power') || '0').toFixed(1);
@@ -358,16 +365,17 @@ export class WattpilotCard extends LitElement {
     if (soc <= 10) {
       batteryIcon = 'mdi:battery-outline';
       batteryColor = '#f44336';
-    } else if (soc <= 20) {
-      batteryIcon = 'mdi:battery-20';
+    } else if (soc <= 30) {
+      batteryIcon = 'mdi:battery-30';
       batteryColor = '#ff9800';
-    } else if (soc <= 50) {
-      batteryIcon = 'mdi:battery-50';
-      batteryColor = '#fbff00';
+    } else if (soc <= 60) {
+      batteryIcon = 'mdi:battery-60';
+      batteryColor = '#fdd835';
     } else if (soc <= 80) {
       batteryIcon = 'mdi:battery-80';
+      batteryColor = '#8bc34a';
     } else {
-      batteryIcon = 'mdi:battery-100';
+      batteryIcon = 'mdi:battery';
     }
     
     return html`
