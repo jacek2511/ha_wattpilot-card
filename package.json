@@ -1,6 +1,6 @@
 {
   "name": "wattpilot-card",
-  "version": "0.0.21",
+  "version": "0.1.0",
   "description": "Fronius Wattpilot Card for Home Assistant",
   "scripts": {
     "build": "rollup -c",
