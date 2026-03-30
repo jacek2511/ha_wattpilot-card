@@ -69,22 +69,19 @@ export const cardStyles = css`
   .chip.active { background: #03a9f4; font-weight: bold; color: white;}
   
   /* --- UJEDNOLICENIE SUWAKÓW --- */
-  .slider-row { margin-bottom: 8px; display: flex; align-items: center; gap: 12px; width: 100%; }
-  .control-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: #ccc; gap: 12px; }
+  .slider-row { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; width: 100%; }
+  .control-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: #ccc; gap: 8px; }
   
-  /* Wspólne etykiety o stałej szerokości (gwarancja równego startu suwaków) */
-  .slider-label, .control-label { font-size: 13px; color: #ccc; flex: 0 0 120px; white-space: nowrap; }
+  /* Etykiety: "white-space: normal" pozwala zawijać tekst, gdy jest za długi */
+  .slider-label, .control-label { font-size: 13px; color: #ccc; flex: 0 0 110px; white-space: normal; line-height: 1.2; word-wrap: break-word; }
   
-  /* Kontener na suwak i wartość dla podpaneli */
   .right-controls { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end; }
-  
   select, input { max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; }
-  
-  /* Suwaki rozciągają się na pozostałą przestrzeń */
   input[type=range] { flex: 1; min-width: 0; cursor: pointer; accent-color: #03a9f4; }
   
-  /* Wspólne wartości liczbowe o stałej szerokości (gwarancja równego końca suwaków) */
   .amp-box, .val-txt { font-weight: bold; font-size: 13px; flex: 0 0 45px; text-align: right; color: #fff; }
+
+  /* --- KONIEC UJEDNOLICENIA --- */
 
   .sub-panel { background: #262626; border-radius: 8px; padding: 12px; margin-top: 12px; font-size: 12px; }
   .section-title { color: #03a9f4; font-weight: bold; margin-bottom: 8px; font-size: 11px; letter-spacing: 1px; }
@@ -108,7 +105,6 @@ export const cardStyles = css`
   .charging .progress-bar-gradient { animation: pulse-border 2s ease-in-out infinite; }
   @keyframes pulse-border { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.3); } }
 
-  /* Style ikon bocznych */
   .data-row ha-icon { transition: color 0.3s ease; } 
   
   .led-wrapper { position: relative; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; }
@@ -122,4 +118,10 @@ export const cardStyles = css`
   .led.blue-blink { animation: led-blink 1s infinite; background: #4da3ff; }
   @keyframes led-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
 
+  /* --- MEDIA QUERIES DLA TELEFONÓW (Poniżej 450px szerokości karty) --- */
+  @media (max-width: 450px) {
+    .slider-label, .control-label { flex: 0 0 85px; font-size: 11px; } /* Mniej miejsca na etykietę */
+    .amp-box, .val-txt { flex: 0 0 38px; font-size: 12px; } /* Mniej miejsca na wartość */
+    .slider-row, .control-row { gap: 6px; } /* ciaśniejsze odstępy między elementami */
+  }
 `;
