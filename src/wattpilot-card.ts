@@ -25,6 +25,7 @@ export class WattpilotCard extends LitElement {
   @state() private config!: WattpilotConfig;
 
   // Stany wewnątrz komponentu
+  @state() private _localValues: { [key: string]: number } = {};
   @state() private _currentAmps: number = 6;
   @state() private _isCharging: boolean = false;
   @state() private _activePanel: string = '';
